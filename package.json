@@ -1,0 +1,23 @@
+{
+  "name": "qr-auth-web-service",
+  "version": "1.0.0",
+  "description": "A web service for generating WhatsApp QR codes and managing sessions with @whiskeysockets/baileys",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^5.0.0", 
+    "express": "^4.18.2",
+    "mongodb": "^5.9.0",
+    "uuid": "^9.0.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  
+  "author": "Ayanokoji kiyotaka",
+  "license": "MIT"
+}
