@@ -8,7 +8,7 @@ const QRCode = require('qrcode');
 // Set up Express for serving the QR code
 const app = express();
 const port = process.env.PORT || 3000;
-const mongoURL = "mongodb+srv://Saif:Arhaan123@cluster0.mj6hd.mongodb.net";
+const mongoURL = process.env.MONGODB_URI|| "SOPHIA";
 
 // Variable to hold QR code data
 let qrCodeData = '';
