@@ -39,11 +39,12 @@ async function connectionLogic() {
         .db("whatsapp_api")
         .collection("auth_info_baileys");
 
-    const { state, saveCreds } = await useMongoDBAuthState(collection);
+    // Use the MongoDB auth state logic
+    const { state, saveCreds } = await useMongoDBAuthState(collection); // Here we call useMongoDBAuthState
 
     const sock = makeWASocket({
         // Provide additional config here
-        auth: state,
+        auth: state, // Use the auth state returned by useMongoDBAuthState
     });
 
     // Generate and store session ID after connection is established
@@ -79,9 +80,8 @@ async function connectionLogic() {
         console.log(messageInfoUpsert);
     });
 
-    sock.ev.on("creds.update", saveCreds);
-}
-
+    sock.ev.on("creds.update", saveCreds); // Save credentials on updates
+              }
 // Start connection logic
 connectionLogic();
 
