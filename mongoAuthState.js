@@ -73,6 +73,7 @@ module.exports = useMongoDBAuthState = async (collection) => {
     };
     return collection.updateOne({ _id: id }, update, { upsert: true });
   };
+
   const readData = async (id) => {
     try {
       const data = JSON.stringify(await collection.findOne({ _id: id }));
@@ -81,12 +82,28 @@ module.exports = useMongoDBAuthState = async (collection) => {
       return null;
     }
   };
+
   const removeData = async (id) => {
     try {
       await collection.deleteOne({ _id: id });
     } catch (_a) {}
   };
-  const creds = (await readData("creds")) || (0, initAuthCreds)();
+
+  // New function to store session ID
+  const storeSessionId = async (sessionId) => {
+    const sessionData = { _id: sessionId, createdAt: new Date() }; // Store session ID with timestamp
+    await collection.updateOne({ _id: sessionId }, { $set: sessionData }, { upsert: true });
+    console.log(`Session ID stored: ${sessionId}`);
+  };
+
+  // New function to get session ID
+  const getSessionId = async () => {
+    const session = await readData("sessionId");
+    return session ? session._id : null;
+  };
+
+  const creds = (await readData("creds")) || initAuthCreds();
+  
   return {
     state: {
       creds,
@@ -120,5 +137,7 @@ module.exports = useMongoDBAuthState = async (collection) => {
     saveCreds: () => {
       return writeData(creds, "creds");
     },
+    storeSessionId, // Add store sessionId method
+    getSessionId, // Add get sessionId method
   };
 };
