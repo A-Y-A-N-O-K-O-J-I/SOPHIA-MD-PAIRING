@@ -4,15 +4,30 @@ const { MongoClient } = require('mongodb');
 const useMongoDBAuthState = require('./mongoAuthState');
 const { DisconnectReason } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode');
+const { v4: uuidv4 } = require('uuid'); // Import uuid for session ID generation
 
 // Set up Express for serving the QR code
 const app = express();
 const port = process.env.PORT || 3000;
-const mongoURL = process.env.MONGODB_URI|| "SOPHIA";
+const mongoURL = process.env.MONGODB_URI || "SOPHIA";
 
 // Variable to hold QR code data
 let qrCodeData = '';
 
+// Function to generate a unique session ID
+function generateSessionId() {
+  const sessionId = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}`; // Generate and format the session ID
+  return sessionId;
+}
+
+// Function to store session ID in MongoDB
+async function storeSessionId(sessionId, collection) {
+  const sessionData = { _id: sessionId, createdAt: new Date() }; // Store session ID with timestamp
+  await collection.updateOne({ _id: sessionId }, { $set: sessionData }, { upsert: true });
+  console.log(`Session ID stored: ${sessionId}`);
+}
+
+// MongoDB connection logic
 async function connectionLogic() {
     const mongoClient = new MongoClient(mongoURL, {
         useNewUrlParser: true,
@@ -23,12 +38,17 @@ async function connectionLogic() {
     const collection = mongoClient
         .db("whatsapp_api")
         .collection("auth_info_baileys");
+
     const { state, saveCreds } = await useMongoDBAuthState(collection);
 
     const sock = makeWASocket({
         // Provide additional config here
         auth: state,
     });
+
+    // Generate and store session ID after connection is established
+    const sessionId = generateSessionId();
+    await storeSessionId(sessionId, collection); // Store session ID in MongoDB
 
     // Handle connection updates
     sock.ev.on("connection.update", async (update) => {
@@ -62,6 +82,7 @@ async function connectionLogic() {
     sock.ev.on("creds.update", saveCreds);
 }
 
+// Start connection logic
 connectionLogic();
 
 // Serve the QR code at the root URL
