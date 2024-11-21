@@ -5,11 +5,12 @@ const useMongoDBAuthState = require('./mongoAuthState');
 const { DisconnectReason } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid'); // Import uuid for session ID generation
+const config = require('./config'); // Import config.js
 
 // Set up Express for serving the QR code
 const app = express();
-const port = process.env.PORT || 3000;
-const mongoURL = process.env.MONGODB_URI || "SOPHIA";
+const port = config.PORT; // Use the port from config.js
+const mongoURL = config.MONGODB_URI; // Use MongoDB URI from config.js
 
 // Variable to hold QR code data
 let qrCodeData = '';
@@ -29,75 +30,90 @@ async function storeSessionId(sessionId, collection) {
 
 // MongoDB connection logic
 async function connectionLogic() {
-    const mongoClient = new MongoClient(mongoURL, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-    });
-    await mongoClient.connect();
+  const mongoClient = new MongoClient(mongoURL, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  });
+  await mongoClient.connect();
 
-    const collection = mongoClient
-        .db("whatsapp_api")
-        .collection("auth_info_baileys");
+  const collection = mongoClient.db("whatsapp_api").collection("auth_info_baileys");
 
-    // Use the MongoDB auth state logic
-    const { state, saveCreds } = await useMongoDBAuthState(collection); // Here we call useMongoDBAuthState
+  // Use the MongoDB auth state logic
+  const { state, saveCreds } = await useMongoDBAuthState(collection);
 
-    const sock = makeWASocket({
-        // Provide additional config here
-        auth: state, // Use the auth state returned by useMongoDBAuthState
-    });
+  const sock = makeWASocket({
+    auth: state,
+  });
 
-    // Generate and store session ID after connection is established
-    const sessionId = generateSessionId();
-    await storeSessionId(sessionId, collection); // Store session ID in MongoDB
+  // Generate and store session ID after connection is established
+  const sessionId = generateSessionId();
+  await storeSessionId(sessionId, collection); // Store session ID in MongoDB
 
-    // Handle connection updates
-    sock.ev.on("connection.update", async (update) => {
-        const { connection, lastDisconnect, qr } = update || {};
+  // Update the config with the session ID
+  config.SESSION_ID = sessionId;
 
-        // Handle QR code generation
-        if (qr) {
-            qrCodeData = await QRCode.toDataURL(qr); // Convert QR to data URL for web display
-            console.log("QR code updated.");
-        }
+  // Send session ID to the user
+  sock.ev.on('messages.upsert', async (messageInfoUpsert) => {
+    // Send the session ID to the user (you can adjust this to meet your requirements)
+    const { messages } = messageInfoUpsert;
+    for (let message of messages) {
+      if (message.type === 'chat') {
+        const from = message.key.remoteJid;
+        await sock.sendMessage(from, {
+          text: `Your session ID is: ${config.SESSION_ID}`,
+        });
+      }
+    }
+  });
 
-        // Reconnection logic
-        if (connection === "close") {
-            const shouldReconnect =
-                lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+  // Handle connection updates
+  sock.ev.on("connection.update", async (update) => {
+    const { connection, lastDisconnect, qr } = update || {};
 
-            if (shouldReconnect) {
-                connectionLogic();
-            }
-        }
-    });
+    // Handle QR code generation
+    if (qr) {
+      qrCodeData = await QRCode.toDataURL(qr);
+      console.log("QR code updated.");
+    }
 
-    sock.ev.on("messages.update", (messageInfo) => {
-        console.log(messageInfo);
-    });
+    // Reconnection logic
+    if (connection === "close") {
+      const shouldReconnect =
+        lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
 
-    sock.ev.on("messages.upsert", (messageInfoUpsert) => {
-        console.log(messageInfoUpsert);
-    });
+      if (shouldReconnect) {
+        connectionLogic();
+      }
+    }
+  });
 
-    sock.ev.on("creds.update", saveCreds); // Save credentials on updates
-              }
+  sock.ev.on("messages.update", (messageInfo) => {
+    console.log(messageInfo);
+  });
+
+  sock.ev.on("messages.upsert", (messageInfoUpsert) => {
+    console.log(messageInfoUpsert);
+  });
+
+  sock.ev.on("creds.update", saveCreds);
+}
+
 // Start connection logic
 connectionLogic();
 
 // Serve the QR code at the root URL
 app.get("/", (req, res) => {
-    if (qrCodeData) {
-        res.send(`
-            <h2>Scan the QR Code below with WhatsApp:</h2>
-            <img src="${qrCodeData}" alt="WhatsApp QR Code" />
-        `);
-    } else {
-        res.send("<h2>QR Code not generated yet. Please wait...</h2>");
-    }
+  if (qrCodeData) {
+    res.send(`
+      <h2>Scan the QR Code below with WhatsApp:</h2>
+      <img src="${qrCodeData}" alt="WhatsApp QR Code" />
+    `);
+  } else {
+    res.send("<h2>QR Code not generated yet. Please wait...</h2>");
+  }
 });
 
 // Start the web server
 app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+  console.log(`Server running at http://localhost:${port}`);
 });
