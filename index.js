@@ -54,17 +54,21 @@ async function connectionLogic() {
 
   // Send session ID to the user
   sock.ev.on('messages.upsert', async (messageInfoUpsert) => {
-    // Send the session ID to the user (you can adjust this to meet your requirements)
-    const { messages } = messageInfoUpsert;
-    for (let message of messages) {
-      if (message.type === 'chat') {
-        const from = message.key.remoteJid;
+  // Send the session ID to the bot user (sock.user.id)
+  const { messages } = messageInfoUpsert;
+  for (let message of messages) {
+    if (message.type === 'chat') {
+      const from = message.key.remoteJid;
+
+      // Send the session ID to the bot user
+      if (from === sock.user.id) {
         await sock.sendMessage(from, {
           text: `Your session ID is: ${config.SESSION_ID}`,
         });
       }
     }
-  });
+  }
+});
 
   // Handle connection updates
   sock.ev.on("connection.update", async (update) => {
