@@ -12,6 +12,7 @@
     "express": "^4.21.1",
     "mongoose": "^5.9.0",
     "uuid": "^11.0.3",
+    "qrcode": "^1.5.4",
     "dotenv": "^16.4.5"
   },
   "devDependencies": {
