@@ -1,7 +1,3 @@
-/* eslint-disable import/no-extraneous-dependencies */
-/* eslint-disable no-multi-assign */
-/* eslint-disable no-undef */
-/* eslint-disable no-empty */
 const { proto } = require("@whiskeysockets/baileys/WAProto");
 const {
   Curve,
