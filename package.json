@@ -1,7 +1,7 @@
 {
   "name": "qr-auth-web-service",
   "version": "1.0.0",
-  "description": "A web service for generating WhatsApp QR codes and managing sessions with @whiskeysockets/baileys",
+  "description": "A web service for generating WhatsApp QR codes and managing sessions for sophia-md",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -10,7 +10,8 @@
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.9", 
     "express": "^4.21.1",
-    "mongoose": "^8.8.2",
+    "mongodb": "^5.8.1",
+    "mongoose": "^7.4.4",
     "uuid": "^11.0.3",
     "qrcode": "^1.5.4",
     "dotenv": "^16.4.5"
