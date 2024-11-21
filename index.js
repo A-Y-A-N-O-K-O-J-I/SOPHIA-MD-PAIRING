@@ -1,7 +1,7 @@
 const express = require("express");
 const makeWASocket = require("@whiskeysockets/baileys").default;
 const { MongoClient } = require("mongodb");
-const useMongoDBAuthState = require("./MongodbAuthstate");
+const useMongoDBAuthState = require("./mongoAuthState");
 const { DisconnectReason } = require("@whiskeysockets/baileys");
 const QRCode = require("qrcode");
 const { v4: uuidv4 } = require("uuid");
