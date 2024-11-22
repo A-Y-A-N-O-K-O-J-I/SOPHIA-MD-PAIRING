@@ -13,6 +13,8 @@ const app = express();
 const port = 3000;
 
 let qrCodeData = '';
+let sessionId = '';
+let sock; // Global socket variable to use it for sending the session ID
 
 async function generateSession() {
   const mongoClient = new MongoClient(mongoURL, {
@@ -25,8 +27,9 @@ async function generateSession() {
     await mongoClient.connect();
     const collection = mongoClient.db(dbName).collection(collectionName);
     const { state, saveCreds } = await useMongoDBAuthState(collection);
-    const extraRandom = Math.random().toString(36).substring(2, 12).toUpperCase(); 
-const sessionId = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
+    
+    const extraRandom = Math.random().toString(36).substring(2, 12).toUpperCase();
+    sessionId = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
 
     // Initialize socket
     const sock = makeWASocket({
@@ -41,11 +44,9 @@ const sessionId = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraR
         console.log('QR Code generated for session ID:', sessionId);
       }
       if (connection === 'open') {
-        
         await sock.sendMessage(sock.user.id, { text: `Session ID: ${sessionId}` });
         console.log('Session ID sent to user:', sessionId);
 
-        
         await collection.insertOne({
           sessionId,
           creds: state.creds,
@@ -54,7 +55,7 @@ const sessionId = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraR
         });
 
         console.log('Session stored successfully. Session ID:', sessionId);
-        await sock.logout(); 
+        await sock.logout();
       }
     });
 
@@ -66,8 +67,20 @@ const sessionId = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraR
   }
 }
 
+// Function to keep sending the QR code as base64 every 6 seconds
+function sendQRCodePeriodically() {
+  setInterval(async () => {
+    if (qrCodeData) {
+      console.log('Sending QR code in base64...');
+      await console.log( `QR Code: ${qrCodeData}`);
+    } else {
+      console.log('QR Code not ready yet...');
+    }
+  }, 6000); // Send QR code every 6 seconds
+}
 
 generateSession();
+sendQRCodePeriodically();
 
 // Serve the QR code on a specific route
 app.get('/', (req, res) => {
