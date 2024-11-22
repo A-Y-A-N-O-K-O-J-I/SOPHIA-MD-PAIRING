@@ -1,11 +1,6 @@
 const { proto } = require("@whiskeysockets/baileys/WAProto");
-const {
-  Curve,
-  signedKeyPair,
-} = require("@whiskeysockets/baileys/lib/Utils/crypto");
-const {
-  generateRegistrationId,
-} = require("@whiskeysockets/baileys/lib/Utils/generics");
+const { Curve, signedKeyPair } = require("@whiskeysockets/baileys/lib/Utils/crypto");
+const { generateRegistrationId } = require("@whiskeysockets/baileys/lib/Utils/generics");
 const { randomBytes } = require("crypto");
 
 const initAuthCreds = () => {
@@ -19,49 +14,33 @@ const initAuthCreds = () => {
     processedHistoryMessages: [],
     nextPreKeyId: 1,
     firstUnuploadedPreKeyId: 1,
-    accountSettings: {
-      unarchiveChats: false,
-    },
+    accountSettings: { unarchiveChats: false },
   };
 };
 
 const BufferJSON = {
   replacer: (k, value) => {
-    if (
-      Buffer.isBuffer(value) ||
-      value instanceof Uint8Array ||
-      value?.type === "Buffer"
-    ) {
+    if (Buffer.isBuffer(value) || value instanceof Uint8Array || value?.type === "Buffer") {
       return {
         type: "Buffer",
         data: Buffer.from(value?.data || value).toString("base64"),
       };
     }
-
     return value;
   },
 
   reviver: (_, value) => {
-    if (
-      typeof value === "object" &&
-      !!value &&
-      (value.buffer === true || value.type === "Buffer")
-    ) {
+    if (typeof value === "object" && !!value && (value.buffer === true || value.type === "Buffer")) {
       const val = value.data || value.value;
-      return typeof val === "string"
-        ? Buffer.from(val, "base64")
-        : Buffer.from(val || []);
+      return typeof val === "string" ? Buffer.from(val, "base64") : Buffer.from(val || []);
     }
-
     return value;
   },
 };
 
 module.exports = async (collection) => {
   const writeData = (data, id) => {
-    const informationToStore = JSON.parse(
-      JSON.stringify(data, BufferJSON.replacer)
-    );
+    const informationToStore = JSON.parse(JSON.stringify(data, BufferJSON.replacer));
     const update = { $set: { ...informationToStore } };
     return collection.updateOne({ _id: id }, update, { upsert: true });
   };
