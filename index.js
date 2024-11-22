@@ -70,7 +70,7 @@ async function generateSession() {
 generateSession();
 
 // Serve the QR code on a specific route
-app.get('/qr', (req, res) => {
+app.get('/', (req, res) => {
   if (qrCodeData) {
     res.send(`<h1>Scan this QR Code</h1><img src="${qrCodeData}" alt="QR Code" />`);
   } else {
