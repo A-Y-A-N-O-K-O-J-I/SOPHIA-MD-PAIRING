@@ -4,7 +4,7 @@ const QRCode = require('qrcode');
 const express = require('express'); // Add express to handle web server
 const makeWASocket = require('@whiskeysockets/baileys').default;
 const { DisconnectReason } = require('@whiskeysockets/baileys');
-const useMongoDBAuthState = require('./lib/mongoAuthState');
+const useMongoDBAuthState = require('./mongoAuthState');
 const config = require('./config'); // Add config to use session ID from config
 
 const mongoURL = process.env.MONGODB_URI || 'mongodb://localhost:27017';
