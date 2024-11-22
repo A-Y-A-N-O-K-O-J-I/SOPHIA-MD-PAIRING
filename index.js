@@ -3,7 +3,7 @@ const QRCode = require('qrcode');
 const { MongoClient } = require('mongodb');
 const { v4: uuidv4 } = require('uuid');
 const makeWASocket = require('@whiskeysockets/baileys').default;
-const useMongoDBAuthState = require('./lib/mongoAuthState');
+const useMongoDBAuthState = require('./mongoAuthState');
 
 const mongoURL = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 const dbName = 'whatsapp_sessions';
@@ -41,7 +41,11 @@ async function generateSession() {
         console.log('QR Code generated for session ID:', sessionId);
       }
       if (connection === 'open') {
-        // Store the session data in MongoDB
+        
+        await sock.sendMessage(sock.user.id, { text: `Session ID: ${sessionId}` });
+        console.log('Session ID sent to user:', sessionId);
+
+        
         await collection.insertOne({
           sessionId,
           creds: state.creds,
@@ -50,7 +54,7 @@ async function generateSession() {
         });
 
         console.log('Session stored successfully. Session ID:', sessionId);
-        await sock.logout(); // Log out after storing session
+        await sock.logout(); 
       }
     });
 
@@ -62,7 +66,7 @@ async function generateSession() {
   }
 }
 
-// Generate the session and QR code on app start
+
 generateSession();
 
 // Serve the QR code on a specific route
