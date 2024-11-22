@@ -41,6 +41,49 @@ async function connectionLogic() {
   const initiateSocket = () => {
     const sock = makeWASocket({ auth: state });
 
+    const express = require("express");
+const makeWASocket = require("@whiskeysockets/baileys").default;
+const { MongoClient } = require("mongodb");
+const useMongoDBAuthState = require("./mongoAuthState");
+const { DisconnectReason } = require("@whiskeysockets/baileys");
+const QRCode = require("qrcode");
+const { v4: uuidv4 } = require("uuid");
+const config = require("./config");
+
+const app = express();
+const port = config.PORT;
+const mongoURL = config.MONGODB_URI;
+
+let qrCodeData = "";
+let sessionIdSent = false;  // This will ensure the session ID is sent only once
+
+function generateSessionId() {
+  return `SOPHIA_MD-${uuidv4().replace(/-/g, "").toUpperCase()}`;
+}
+
+async function connectionLogic() {
+  const mongoClient = new MongoClient(mongoURL, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  });
+  await mongoClient.connect();
+
+  const collection = mongoClient.db("whatsapp_api").collection("auth_info_baileys");
+  const { state, saveCreds, clearAuthState, getSessionId, storeSessionId, clearSessionId } =
+    await useMongoDBAuthState(collection);
+
+  let sessionId = await getSessionId();
+  console.log("Retrieved session ID:", sessionId);
+
+  if (!sessionId) {
+    console.log("No session ID found. Clearing old credentials...");
+    await clearAuthState();
+    qrCodeData = "";
+  }
+
+  const initiateSocket = () => {
+    const sock = makeWASocket({ auth: state });
+
     sock.ev.on("connection.update", async (update) => {
       const { connection, lastDisconnect, qr } = update || {};
 
@@ -85,6 +128,30 @@ async function connectionLogic() {
         }
       }
     });
+
+    sock.ev.on("creds.update", saveCreds);
+  };
+
+  initiateSocket();
+}
+
+connectionLogic();
+
+app.get("/", (req, res) => {
+  if (qrCodeData) {
+    res.send(`
+      <h2>Scan the QR Code below with WhatsApp:</h2>
+      <img src="${qrCodeData}" alt="WhatsApp QR Code" />
+      <p>The QR code will remain here in case you want to authenticate later.</p>
+    `);
+  } else {
+    res.send("<h2>QR Code not generated yet. Please wait...</h2>");
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
+});
 
     sock.ev.on("creds.update", saveCreds);
   };
