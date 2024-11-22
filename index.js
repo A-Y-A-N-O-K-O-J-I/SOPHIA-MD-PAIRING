@@ -12,7 +12,8 @@ const port = config.PORT;
 const mongoURL = config.MONGODB_URI;
 
 let qrCodeData = "";
-let sessionIdSent = false;  // This will ensure the session ID is sent only once
+let sessionIdSent = false; // Ensure session ID is sent only once
+const reconnectDelay = 10000; // Delay in milliseconds for reconnection
 
 function generateSessionId() {
   return `SOPHIA_MD-${uuidv4().replace(/-/g, "").toUpperCase()}`;
@@ -29,28 +30,22 @@ async function connectionLogic() {
   const { state, saveCreds, clearAuthState, getSessionId, storeSessionId, clearSessionId } =
     await useMongoDBAuthState(collection);
 
-  let sessionId = await getSessionId();
-  console.log("Retrieved session ID:", sessionId);
-
-  if (!sessionId) {
-    console.log("No session ID found. Clearing old credentials...");
-    await clearAuthState();
-    qrCodeData = "";
-  }
-
   const initiateSocket = () => {
     const sock = makeWASocket({ auth: state });
 
     sock.ev.on("connection.update", async (update) => {
       const { connection, lastDisconnect, qr } = update || {};
 
+      // Always generate QR code
       if (qr) {
         qrCodeData = await QRCode.toDataURL(qr);
         console.log("QR code updated. Scan to log in.");
       }
 
       if (connection === "open") {
-        console.log("Connection successful. Saving session ID...");
+        console.log("Connection successful.");
+        let sessionId = await getSessionId();
+
         if (!sessionId) {
           sessionId = generateSessionId();
           await storeSessionId(sessionId);
@@ -63,7 +58,7 @@ async function connectionLogic() {
               text: `Your session ID is: ${sessionId}`,
             });
             console.log("Session ID sent to your contact.");
-            sessionIdSent = true;  // Prevents sending session ID again
+            sessionIdSent = true; // Prevents sending session ID again
           } catch (error) {
             console.error("Failed to send session ID:", error);
           }
@@ -80,8 +75,10 @@ async function connectionLogic() {
           await clearSessionId(); // Clear session ID in MongoDB
           connectionLogic();
         } else {
-          console.log("Reconnecting...");
-          initiateSocket();
+          console.log(`Reconnecting in ${reconnectDelay / 1000} seconds...`);
+          setTimeout(() => {
+            initiateSocket();
+          }, reconnectDelay); // Reconnect after delay
         }
       }
     });
@@ -94,6 +91,7 @@ async function connectionLogic() {
 
 connectionLogic();
 
+// Serve the QR code at the root URL
 app.get("/", (req, res) => {
   if (qrCodeData) {
     res.send(`
