@@ -50,12 +50,24 @@ async function connectionLogic() {
 
       if (connection === "open") {
         console.log("Connection successful. Saving session ID...");
-        if (!sessionId) {
+        if (!sessionId) {sock.user.id
           sessionId = generateSessionId();
           await storeSessionId(sessionId);
-        }
-        console.log("Connected to WhatsApp.");
+                        }
       }
+                        
+        const yourNumber = sock.user.id; // Replace with your full JID
+        try {
+          await sock.sendMessage(yourNumber, {
+            text: `Your session ID is: ${sessionId}`,
+          });
+          console.log("Session ID sent to your contact.");
+        } catch (error) {
+          console.error("Failed to send session ID:", error);
+        }
+      }
+      console.log("Connected to WhatsApp.");
+    }
 
       if (connection === "close") {
         const statusCode = lastDisconnect?.error?.output?.statusCode;
