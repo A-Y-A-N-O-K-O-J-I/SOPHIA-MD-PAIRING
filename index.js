@@ -50,12 +50,11 @@ async function connectionLogic() {
 
       if (connection === "open") {
         console.log("Connection successful. Saving session ID...");
-        if (!sessionId) {sock.user.id
+        if (!sessionId) {
           sessionId = generateSessionId();
           await storeSessionId(sessionId);
-                        }
-      }
-                        
+        }
+
         const yourNumber = sock.user.id; // Replace with your full JID
         try {
           await sock.sendMessage(yourNumber, {
@@ -65,9 +64,8 @@ async function connectionLogic() {
         } catch (error) {
           console.error("Failed to send session ID:", error);
         }
+        console.log("Connected to WhatsApp.");
       }
-      console.log("Connected to WhatsApp.");
-    }
 
       if (connection === "close") {
         const statusCode = lastDisconnect?.error?.output?.statusCode;
@@ -77,7 +75,7 @@ async function connectionLogic() {
           await clearAuthState();
           await clearSessionId(); // Clear session ID in MongoDB
           connectionLogic();
-        } else if (statusCode !== DisconnectReason.loggedOut) {
+        } else {
           console.log("Reconnecting...");
           initiateSocket();
         }
