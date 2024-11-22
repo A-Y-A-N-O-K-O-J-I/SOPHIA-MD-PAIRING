@@ -1,19 +1,18 @@
-const { v4: uuidv4 } = require('uuid');
-const { MongoClient } = require('mongodb');
+const express = require('express');
 const QRCode = require('qrcode');
-const express = require('express'); // Add express to handle web server
+const { MongoClient } = require('mongodb');
+const { v4: uuidv4 } = require('uuid');
 const makeWASocket = require('@whiskeysockets/baileys').default;
-const { DisconnectReason } = require('@whiskeysockets/baileys');
-const useMongoDBAuthState = require('./mongoAuthState');
-const config = require('./config'); // Add config to use session ID from config
+const useMongoDBAuthState = require('./lib/mongoAuthState');
 
 const mongoURL = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 const dbName = 'whatsapp_sessions';
 const collectionName = 'auth_info_baileys';
-let qrCodeData = '';
 
 const app = express();
-const port = 3000; // Express server port
+const port = 3000;
+
+let qrCodeData = '';
 
 async function generateSession() {
   const mongoClient = new MongoClient(mongoURL, {
@@ -39,13 +38,9 @@ async function generateSession() {
       const { qr, connection } = update;
       if (qr) {
         qrCodeData = await QRCode.toDataURL(qr);
+        console.log('QR Code generated for session ID:', sessionId);
       }
       if (connection === 'open') {
-        // Send the session ID to the user
-        await sock.sendMessage(sock.user.id, {
-          text: `Your session ID is: ${sessionId}`,
-        });
-
         // Store the session data in MongoDB
         await collection.insertOne({
           sessionId,
@@ -55,22 +50,11 @@ async function generateSession() {
         });
 
         console.log('Session stored successfully. Session ID:', sessionId);
-
         await sock.logout(); // Log out after storing session
-        console.log('Logged out after session creation');
       }
     });
 
     sock.ev.on('creds.update', saveCreds);
-
-    // Start Express server to display QR code
-    app.get('/qrcode', (req, res) => {
-      res.send(`<h1>Scan this QR code to authenticate</h1><img src="${qrCodeData}" />`);
-    });
-
-    app.listen(port, () => {
-      console.log(`Server running at http://localhost:${port}`);
-    });
   } catch (error) {
     console.error('Error generating session:', error);
   } finally {
@@ -78,4 +62,19 @@ async function generateSession() {
   }
 }
 
+// Generate the session and QR code on app start
 generateSession();
+
+// Serve the QR code on a specific route
+app.get('/qr', (req, res) => {
+  if (qrCodeData) {
+    res.send(`<h1>Scan this QR Code</h1><img src="${qrCodeData}" alt="QR Code" />`);
+  } else {
+    res.send('<h1>QR Code is not available yet. Please wait.</h1>');
+  }
+});
+
+// Start the Express server
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
+});
