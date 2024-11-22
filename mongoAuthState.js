@@ -99,6 +99,15 @@ module.exports = async (collection) => {
   };
 
   const creds = (await readData("creds")) || initAuthCreds();
+  const clearAuthState = async () => {
+    try {
+      await collection.deleteMany({});
+      console.log("Auth state cleared successfully.");
+    } catch (error) {
+      console.error("Error clearing auth state:", error);
+      throw error;
+    }
+  };
 
   return {
     state: {
@@ -133,6 +142,7 @@ module.exports = async (collection) => {
     saveCreds: () => writeData(creds, "creds"),
     storeSessionId,
     getSessionId,
+    clearAuthState,
     clearSessionId,
   };
 };
