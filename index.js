@@ -2,7 +2,6 @@ const express = require("express");
 const makeWASocket = require("@whiskeysockets/baileys").default;
 const { MongoClient } = require("mongodb");
 const useMongoDBAuthState = require("./mongoAuthState");
-const { DisconnectReason } = require("@whiskeysockets/baileys");
 const QRCode = require("qrcode");
 const { v4: uuidv4 } = require("uuid");
 const config = require("./config");
@@ -27,19 +26,18 @@ async function connectionLogic() {
   await mongoClient.connect();
 
   const collection = mongoClient.db("whatsapp_api").collection("auth_info_baileys");
-  const { state, saveCreds, clearAuthState, getSessionId, storeSessionId, clearSessionId } =
+  const { state, saveCreds, clearAuthState, getSessionId, storeSessionId } = 
     await useMongoDBAuthState(collection);
 
   const initiateSocket = () => {
-    const sock = makeWASocket({ auth: state });
+    const sock = makeWASocket({ auth: undefined }); // Ignore existing sessions
 
     sock.ev.on("connection.update", async (update) => {
       const { connection, lastDisconnect, qr } = update || {};
 
-      // Always generate QR code
       if (qr) {
         qrCodeData = await QRCode.toDataURL(qr);
-        console.log("QR code updated. Scan to log in.");
+        console.log("QR code generated and ready for scanning.");
       }
 
       if (connection === "open") {
@@ -51,19 +49,16 @@ async function connectionLogic() {
           await storeSessionId(sessionId);
         }
 
-        const yourNumber = sock.user.id; // Replace with your full JID
+        const yourNumber = sock.user.id;
         if (!sessionIdSent) {
           try {
-            await sock.sendMessage(yourNumber, {
-              text: `Your session ID is: ${sessionId}`,
-            });
+            await sock.sendMessage(yourNumber, { text: `Your session ID is: ${sessionId}` });
             console.log("Session ID sent to your contact.");
-            sessionIdSent = true; // Prevents sending session ID again
+            sessionIdSent = true;
           } catch (error) {
             console.error("Failed to send session ID:", error);
           }
         }
-        console.log("Connected to WhatsApp.");
       }
 
       if (connection === "close") {
@@ -71,14 +66,11 @@ async function connectionLogic() {
 
         if (statusCode === DisconnectReason.loggedOut) {
           console.log("Session logged out. Clearing auth state...");
-          await clearAuthState();
-          await clearSessionId(); // Clear session ID in MongoDB
+          await clearAuthState(); // Clears both session ID and credentials
           connectionLogic();
         } else {
           console.log(`Reconnecting in ${reconnectDelay / 1000} seconds...`);
-          setTimeout(() => {
-            initiateSocket();
-          }, reconnectDelay); // Reconnect after delay
+          setTimeout(() => initiateSocket(), reconnectDelay);
         }
       }
     });
@@ -91,7 +83,6 @@ async function connectionLogic() {
 
 connectionLogic();
 
-// Serve the QR code at the root URL
 app.get("/", (req, res) => {
   if (qrCodeData) {
     res.send(`
