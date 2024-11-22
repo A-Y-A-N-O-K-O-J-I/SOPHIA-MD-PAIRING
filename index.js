@@ -42,11 +42,18 @@ async function connectionLogic() {
   await mongoClient.connect();
 
   const collection = mongoClient.db("whatsapp_api").collection("auth_info_baileys");
-  const { state, saveCreds, getSessionId } = await useMongoDBAuthState(collection);
+  const { state, saveCreds, clearAuthState, getSessionId } = await useMongoDBAuthState(collection);
 
   // Retrieve existing session ID from MongoDB
   let sessionId = await getSessionId();
   console.log("Retrieved session ID:", sessionId);
+
+  // If session ID is null or auth state is invalid, clear auth state and prompt QR login
+  if (!sessionId) {
+    console.log("No session ID found. Clearing old credentials...");
+    await clearAuthState(); // Clear auth state from MongoDB
+    qrCodeData = ""; // Reset QR code
+  }
 
   const initiateSocket = () => {
     const sock = makeWASocket({ auth: state });
@@ -61,19 +68,13 @@ async function connectionLogic() {
       }
 
       if (connection === "open") {
+        console.log("Connection successful. Saving session ID...");
         if (!sessionId) {
-          // If no session ID, create a new one and store it
+          // Generate and store session ID after successful login
           sessionId = generateSessionId();
           await storeSessionId(sessionId, collection);
-
-          // Send session ID to the user's DM
-          await sock.sendMessage(sock.user.id, {
-            text: `Your session ID is: ${sessionId}`,
-          });
-          console.log("Session ID sent to user's DM.");
-        } else {
-          console.log("Using existing session ID.");
         }
+        console.log("Connected to WhatsApp.");
       }
 
       // Handle disconnections and logout
@@ -81,12 +82,12 @@ async function connectionLogic() {
         const statusCode = lastDisconnect?.error?.output?.statusCode;
 
         if (statusCode === DisconnectReason.loggedOut) {
-          console.log("Session logged out. Clearing session and prompting QR code login...");
-          await clearSessionId(collection);
-          connectionLogic();
+          console.log("Session logged out. Clearing auth state...");
+          await clearAuthState(); // Clear auth state from MongoDB
+          connectionLogic(); // Restart connection logic to prompt QR login
         } else if (statusCode !== DisconnectReason.loggedOut) {
           console.log("Reconnecting...");
-          initiateSocket();
+          initiateSocket(); // Reinitialize the socket
         }
       }
     });
@@ -94,14 +95,8 @@ async function connectionLogic() {
     sock.ev.on("creds.update", saveCreds);
   };
 
-  // If no session ID, initiate QR code login, otherwise, use existing session
-  if (!sessionId) {
-    console.log("No session ID found. Please scan the QR code to log in.");
-    initiateSocket();
-  } else {
-    console.log(`Using existing session ID: ${sessionId}`);
-    initiateSocket();
-  }
+  // Start the socket connection
+  initiateSocket();
 }
 
 // Start connection logic
