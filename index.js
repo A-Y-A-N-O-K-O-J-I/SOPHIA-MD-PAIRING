@@ -17,8 +17,7 @@ let qrCodeData = "";
 
 // Function to generate a unique session ID
 function generateSessionId() {
-  const sessionId = `SOPHIA_MD-${uuidv4().replace(/-/g, "").toUpperCase()}`;
-  return sessionId;
+  return `SOPHIA_MD-${uuidv4().replace(/-/g, "").toUpperCase()}`;
 }
 
 // Function to store session ID in MongoDB
@@ -48,9 +47,7 @@ async function connectionLogic() {
   // Retrieve existing session ID
   let sessionId = await getSessionId();
 
-  // If no session ID, prompt QR code login
-  if (!sessionId) {
-    console.log("No session ID found. Please scan the QR code to log in.");
+  const initiateSocket = () => {
     const sock = makeWASocket({ auth: state });
 
     sock.ev.on("connection.update", async (update) => {
@@ -62,16 +59,18 @@ async function connectionLogic() {
         console.log("QR code updated. Scan to log in.");
       }
 
-      // After login, generate and store session ID
       if (connection === "open") {
-        sessionId = generateSessionId();
-        await storeSessionId(sessionId, collection); // Save session ID
+        if (!sessionId) {
+          sessionId = generateSessionId();
+          await storeSessionId(sessionId, collection);
 
-        // Send session ID to the user's DM
-        await sock.sendMessage(sock.user.id, {
-          text: `Your session ID is: ${sessionId}`,
-        });
-        console.log("Session ID sent to user's DM.");
+          await sock.sendMessage(sock.user.id, {
+            text: `Your session ID is: ${sessionId}`,
+          });
+          console.log("Session ID sent to user's DM.");
+        } else {
+          console.log("Reconnected successfully using existing session ID.");
+        }
       }
 
       // Handle reconnections
@@ -80,45 +79,24 @@ async function connectionLogic() {
 
         if (statusCode === DisconnectReason.loggedOut) {
           console.log("Session logged out. Clearing session and prompting QR code login...");
-          await clearSessionId(collection); // Clear the logged-out session ID
-          connectionLogic(); // Restart connection logic to prompt QR code login
-        } else {
-          const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-          if (shouldReconnect) {
-            console.log("Reconnecting...");
-            connectionLogic();
-          }
+          await clearSessionId(collection);
+          connectionLogic();
+        } else if (statusCode !== DisconnectReason.loggedOut) {
+          console.log("Reconnecting...");
+          initiateSocket();
         }
       }
     });
 
     sock.ev.on("creds.update", saveCreds);
+  };
+
+  if (!sessionId) {
+    console.log("No session ID found. Please scan the QR code to log in.");
+    initiateSocket();
   } else {
-    // Use the existing session ID to locate auth credentials
     console.log(`Using existing session ID: ${sessionId}`);
-    const sock = makeWASocket({ auth: state });
-
-    sock.ev.on("connection.update", async (update) => {
-      const { connection, lastDisconnect } = update || {};
-
-      if (connection === "close") {
-        const statusCode = lastDisconnect?.error?.output?.statusCode;
-
-        if (statusCode === DisconnectReason.loggedOut) {
-          console.log("Session logged out. Clearing session and prompting QR code login...");
-          await clearSessionId(collection); // Clear the logged-out session ID
-          connectionLogic(); // Restart connection logic to prompt QR code login
-        } else {
-          const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-          if (shouldReconnect) {
-            console.log("Reconnecting...");
-            connectionLogic();
-          }
-        }
-      }
-    });
-
-    sock.ev.on("creds.update", saveCreds);
+    initiateSocket();
   }
 }
 
