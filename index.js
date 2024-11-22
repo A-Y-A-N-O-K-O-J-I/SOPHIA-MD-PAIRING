@@ -25,8 +25,9 @@ async function generateSession() {
     await mongoClient.connect();
     const collection = mongoClient.db(dbName).collection(collectionName);
     const { state, saveCreds } = await useMongoDBAuthState(collection);
+    const extraRandom = Math.random().toString(36).substring(2, 12).toUpperCase(); 
+const sessionId = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
 
-    const sessionId = `SOPHIA_MD-${uuidv4()}`;
     // Initialize socket
     const sock = makeWASocket({
       auth: state,
