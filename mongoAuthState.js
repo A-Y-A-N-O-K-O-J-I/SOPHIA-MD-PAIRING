@@ -57,16 +57,12 @@ const BufferJSON = {
   },
 };
 
-module.exports = useMongoDBAuthState = async (collection) => {
+module.exports = async (collection) => {
   const writeData = (data, id) => {
     const informationToStore = JSON.parse(
       JSON.stringify(data, BufferJSON.replacer)
     );
-    const update = {
-      $set: {
-        ...informationToStore,
-      },
-    };
+    const update = { $set: { ...informationToStore } };
     return collection.updateOne({ _id: id }, update, { upsert: true });
   };
 
@@ -85,21 +81,25 @@ module.exports = useMongoDBAuthState = async (collection) => {
     } catch (_a) {}
   };
 
-  // New function to store session ID
+  // Session ID-specific logic
   const storeSessionId = async (sessionId) => {
-    const sessionData = { _id: sessionId, createdAt: new Date() }; // Store session ID with timestamp
-    await collection.updateOne({ _id: sessionId }, { $set: sessionData }, { upsert: true });
+    const sessionData = { _id: "sessionId", sessionId, createdAt: new Date() };
+    await collection.updateOne({ _id: "sessionId" }, { $set: sessionData }, { upsert: true });
     console.log(`Session ID stored: ${sessionId}`);
   };
 
-  // New function to get session ID
   const getSessionId = async () => {
-    const session = await readData("sessionId");
-    return session ? session._id : null;
+    const session = await collection.findOne({ _id: "sessionId" });
+    return session?.sessionId || null;
+  };
+
+  const clearSessionId = async () => {
+    await collection.deleteOne({ _id: "sessionId" });
+    console.log("Session ID cleared.");
   };
 
   const creds = (await readData("creds")) || initAuthCreds();
-  
+
   return {
     state: {
       creds,
@@ -130,10 +130,9 @@ module.exports = useMongoDBAuthState = async (collection) => {
         },
       },
     },
-    saveCreds: () => {
-      return writeData(creds, "creds");
-    },
-    storeSessionId, // Add store sessionId method
-    getSessionId, // Add get sessionId method
+    saveCreds: () => writeData(creds, "creds"),
+    storeSessionId,
+    getSessionId,
+    clearSessionId,
   };
 };
