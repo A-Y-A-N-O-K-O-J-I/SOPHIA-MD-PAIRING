@@ -1,100 +1,81 @@
-const express = require("express");
-const makeWASocket = require("@whiskeysockets/baileys").default;
-const { MongoClient } = require("mongodb");
-const useMongoDBAuthState = require("./mongoAuthState");
-const QRCode = require("qrcode");
-const { v4: uuidv4 } = require("uuid");
-const config = require("./config");
+const { v4: uuidv4 } = require('uuid');
+const { MongoClient } = require('mongodb');
+const QRCode = require('qrcode');
+const express = require('express'); // Add express to handle web server
+const makeWASocket = require('@whiskeysockets/baileys').default;
+const { DisconnectReason } = require('@whiskeysockets/baileys');
+const useMongoDBAuthState = require('./lib/mongoAuthState');
+const config = require('./config'); // Add config to use session ID from config
+
+const mongoURL = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+const dbName = 'whatsapp_sessions';
+const collectionName = 'auth_info_baileys';
+let qrCodeData = '';
 
 const app = express();
-const port = config.PORT;
-const mongoURL = config.MONGODB_URI;
+const port = 3000; // Express server port
 
-let qrCodeData = "";
-let sessionIdSent = false; // Ensure session ID is sent only once
-const reconnectDelay = 10000; // Delay in milliseconds for reconnection
-
-function generateSessionId() {
-  return `SOPHIA_MD-${uuidv4().replace(/-/g, "").toUpperCase()}`;
-}
-
-async function connectionLogic() {
+async function generateSession() {
   const mongoClient = new MongoClient(mongoURL, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   });
-  await mongoClient.connect();
 
-  const collection = mongoClient.db("whatsapp_api").collection("auth_info_baileys");
-  const { state, saveCreds, clearAuthState, getSessionId, storeSessionId } = 
-    await useMongoDBAuthState(collection);
+  try {
+    // Connect to MongoDB and initialize credentials
+    await mongoClient.connect();
+    const collection = mongoClient.db(dbName).collection(collectionName);
+    const { state, saveCreds } = await useMongoDBAuthState(collection);
 
-  const initiateSocket = () => {
-    const sock = makeWASocket({ auth: undefined }); // Ignore existing sessions
+    const sessionId = `SOPHIA_MD-${uuidv4()}`; // Generate session ID
 
-    sock.ev.on("connection.update", async (update) => {
-      const { connection, lastDisconnect, qr } = update || {};
+    // Initialize socket
+    const sock = makeWASocket({
+      auth: state,
+    });
 
+    // Handle QR Code generation and send to the user
+    sock.ev.on('connection.update', async (update) => {
+      const { qr, connection } = update;
       if (qr) {
         qrCodeData = await QRCode.toDataURL(qr);
-        console.log("QR code generated and ready for scanning.");
       }
+      if (connection === 'open') {
+        // Send the session ID to the user
+        await sock.sendMessage(sock.user.id, {
+          text: `Your session ID is: ${sessionId}`,
+        });
 
-      if (connection === "open") {
-        console.log("Connection successful.");
-        let sessionId = await getSessionId();
+        // Store the session data in MongoDB
+        await collection.insertOne({
+          sessionId,
+          creds: state.creds,
+          status: 'generated',
+          createdAt: new Date(),
+        });
 
-        if (!sessionId) {
-          sessionId = generateSessionId();
-          await storeSessionId(sessionId);
-        }
+        console.log('Session stored successfully. Session ID:', sessionId);
 
-        const yourNumber = sock.user.id;
-        if (!sessionIdSent) {
-          try {
-            await sock.sendMessage(yourNumber, { text: `Your session ID is: ${sessionId}` });
-            console.log("Session ID sent to your contact.");
-            sessionIdSent = true;
-          } catch (error) {
-            console.error("Failed to send session ID:", error);
-          }
-        }
-      }
-
-      if (connection === "close") {
-        const statusCode = lastDisconnect?.error?.output?.statusCode;
-
-        if (statusCode === DisconnectReason.loggedOut) {
-          console.log("Session logged out. Clearing auth state...");
-          await clearAuthState(); // Clears both session ID and credentials
-          connectionLogic();
-        } else {
-          console.log(`Reconnecting in ${reconnectDelay / 1000} seconds...`);
-          setTimeout(() => initiateSocket(), reconnectDelay);
-        }
+        await sock.logout(); // Log out after storing session
+        console.log('Logged out after session creation');
       }
     });
 
-    sock.ev.on("creds.update", saveCreds);
-  };
+    sock.ev.on('creds.update', saveCreds);
 
-  initiateSocket();
+    // Start Express server to display QR code
+    app.get('/qrcode', (req, res) => {
+      res.send(`<h1>Scan this QR code to authenticate</h1><img src="${qrCodeData}" />`);
+    });
+
+    app.listen(port, () => {
+      console.log(`Server running at http://localhost:${port}`);
+    });
+  } catch (error) {
+    console.error('Error generating session:', error);
+  } finally {
+    await mongoClient.close();
+  }
 }
 
-connectionLogic();
-
-app.get("/", (req, res) => {
-  if (qrCodeData) {
-    res.send(`
-      <h2>Scan the QR Code below with WhatsApp:</h2>
-      <img src="${qrCodeData}" alt="WhatsApp QR Code" />
-      <p>The QR code will remain here in case you want to authenticate later.</p>
-    `);
-  } else {
-    res.send("<h2>QR Code not generated yet. Please wait...</h2>");
-  }
-});
-
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
-});
+generateSession();
