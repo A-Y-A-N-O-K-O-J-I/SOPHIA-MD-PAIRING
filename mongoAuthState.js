@@ -78,15 +78,21 @@ module.exports = async (collection) => {
   };
 
   const creds = (await readData("creds")) || initAuthCreds();
-  const clearAuthState = async () => {
-    try {
-      await collection.deleteMany({});
-      console.log("Auth state cleared successfully.");
-    } catch (error) {
-      console.error("Error clearing auth state:", error);
-      throw error;
+  const clearAuthState = async (sessionId) => {
+  try {
+    const sessionData = await collection.findOne({ _id: sessionId });
+    if (sessionData) {
+      // Check if the session is logged out (you can use connection status here)
+      const status = sessionData?.status; // Example: Assume you store status in session data
+      if (status === 'loggedOut') {
+        await collection.deleteOne({ _id: sessionId });
+        console.log(`Session ${sessionId} cleared due to logout.`);
+      }
     }
-  };
+  } catch (error) {
+    console.error("Error clearing session:", error);
+  }
+};
 
   return {
     state: {
