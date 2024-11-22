@@ -26,7 +26,7 @@ async function generateSession() {
     const collection = mongoClient.db(dbName).collection(collectionName);
     const { state, saveCreds } = await useMongoDBAuthState(collection);
 
-    const sessionId = `SOPHIA_MD-${uuidv4()}`; // Generate session ID
+    const sessionId = `SOPHIA_MD-${uuidv4().replace(/-/g, "").toUpperCase}`; // Generate session ID
 
     // Initialize socket
     const sock = makeWASocket({
