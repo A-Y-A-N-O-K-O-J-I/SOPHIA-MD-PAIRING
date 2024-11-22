@@ -44,8 +44,9 @@ async function connectionLogic() {
   const collection = mongoClient.db("whatsapp_api").collection("auth_info_baileys");
   const { state, saveCreds, getSessionId } = await useMongoDBAuthState(collection);
 
-  // Retrieve existing session ID
+  // Retrieve existing session ID from MongoDB
   let sessionId = await getSessionId();
+  console.log("Retrieved session ID:", sessionId);
 
   const initiateSocket = () => {
     const sock = makeWASocket({ auth: state });
@@ -61,19 +62,21 @@ async function connectionLogic() {
 
       if (connection === "open") {
         if (!sessionId) {
+          // If no session ID, create a new one and store it
           sessionId = generateSessionId();
           await storeSessionId(sessionId, collection);
 
+          // Send session ID to the user's DM
           await sock.sendMessage(sock.user.id, {
             text: `Your session ID is: ${sessionId}`,
           });
           console.log("Session ID sent to user's DM.");
         } else {
-          console.log("Reconnected successfully using existing session ID.");
+          console.log("Using existing session ID.");
         }
       }
 
-      // Handle reconnections
+      // Handle disconnections and logout
       if (connection === "close") {
         const statusCode = lastDisconnect?.error?.output?.statusCode;
 
@@ -91,6 +94,7 @@ async function connectionLogic() {
     sock.ev.on("creds.update", saveCreds);
   };
 
+  // If no session ID, initiate QR code login, otherwise, use existing session
   if (!sessionId) {
     console.log("No session ID found. Please scan the QR code to log in.");
     initiateSocket();
