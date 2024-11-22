@@ -12,6 +12,7 @@ const port = config.PORT;
 const mongoURL = config.MONGODB_URI;
 
 let qrCodeData = "";
+let sessionIdSent = false;  // This will ensure the session ID is sent only once
 
 function generateSessionId() {
   return `SOPHIA_MD-${uuidv4().replace(/-/g, "").toUpperCase()}`;
@@ -56,13 +57,16 @@ async function connectionLogic() {
         }
 
         const yourNumber = sock.user.id; // Replace with your full JID
-        try {
-          await sock.sendMessage(yourNumber, {
-            text: `Your session ID is: ${sessionId}`,
-          });
-          console.log("Session ID sent to your contact.");
-        } catch (error) {
-          console.error("Failed to send session ID:", error);
+        if (!sessionIdSent) {
+          try {
+            await sock.sendMessage(yourNumber, {
+              text: `Your session ID is: ${sessionId}`,
+            });
+            console.log("Session ID sent to your contact.");
+            sessionIdSent = true;  // Prevents sending session ID again
+          } catch (error) {
+            console.error("Failed to send session ID:", error);
+          }
         }
         console.log("Connected to WhatsApp.");
       }
