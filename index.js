@@ -99,6 +99,7 @@ app.get("/", (req, res) => {
     res.send(`
       <h2>Scan the QR Code below with WhatsApp:</h2>
       <img src="${qrCodeData}" alt="WhatsApp QR Code" />
+      <p>The QR code will remain here in case you want to authenticate later.</p>
     `);
   } else {
     res.send("<h2>QR Code not generated yet. Please wait...</h2>");
