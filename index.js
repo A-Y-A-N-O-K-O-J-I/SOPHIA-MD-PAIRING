@@ -8,12 +8,16 @@ const { MongoClient } = require('mongodb');
 const { v4: uuidv4 } = require('uuid');
 const makeWASocket = require('@whiskeysockets/baileys').default;
 const useMongoDBAuthState = require('./mongoAuthState');
-const mongoURL = process.env.MONGODB_URI || 'mongodb+srv://ayanokojix:ejwRyGJ5Yieow4VK@cluster0.1rruy.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+
+const mongoURL = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 const dbName = 'whatsapp_sessions';
 const collectionName = 'auth_info_baileys';
+
 const app = express();
-const port = 3000;
-let qrCodeData = '';
+const port = 5000;
+
+let qrCodeData = ''; // Holds the current QR code data URL
+let sessionStatus = 'waiting'; // 'waiting', 'scanned', 'expired', 'error'
 
 async function generateSession() {
   const mongoClient = new MongoClient(mongoURL, {
@@ -27,37 +31,45 @@ async function generateSession() {
     const { state, saveCreds } = await useMongoDBAuthState(collection);
 
     const extraRandom = Math.random().toString(36).substring(2, 12).toUpperCase();
-    sessionId = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
+    const sessionId = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
 
     const sock = makeWASocket({
       auth: state,
     });
 
+    // Handle connection updates
     sock.ev.on('connection.update', async (update) => {
-      const { qr, connection } = update;
+      const { qr, connection, lastDisconnect } = update;
+
       if (qr) {
         qrCodeData = await QRCode.toDataURL(qr);
-        console.log('QR Code generated for session ID:', sessionId);
+        sessionStatus = 'waiting'; // Reset status to waiting
+        console.log('New QR code generated:', sessionId);
       }
+
       if (connection === 'open') {
+        sessionStatus = 'scanned';
+        qrCodeData = ''; // Clear QR code
         await collection.insertOne({
           sessionId,
           creds: state.creds,
           status: 'generated',
           createdAt: new Date(),
         });
-        console.log('Session stored successfully. Session ID:', sessionId);
-
-        const loggedInUser = sock.user.id; // Get the logged-in user's ID
-        await sock.sendMessage(loggedInUser, {
-          text: `Your session ID is: ${sessionId}`,
-        });
-        console.log('Session ID sent to the user on WhatsApp:', loggedInUser);
-
-        await sock.logout();
+        console.log('Session stored successfully:', sessionId);
+        await sock.logout(); // Clean up after successful scan
       }
-      if (connection === 'timeout') {
-        console.log('QR code timed out. Regenerating QR code...');
+
+      if (connection === 'close') {
+        const reason = lastDisconnect?.error?.output?.statusCode;
+        if (reason === 408) {
+          sessionStatus = 'expired';
+          console.log('QR Code expired. Retrying...');
+          generateSession(); // Retry session generation on timeout
+        } else {
+          sessionStatus = 'error';
+          console.error('Connection error:', reason);
+        }
       }
     });
 
@@ -69,22 +81,35 @@ async function generateSession() {
   }
 }
 
-generateSession()
+generateSession();
 
+// Serve QR code and session status
 app.get('/qr', (req, res) => {
+  if (sessionStatus === 'expired') {
+    return res.send('<h1>QR Code expired. Reload the page to generate a new one.</h1>');
+  }
+
   if (qrCodeData) {
-    res.send(`
+    return res.send(`
       <h1>Scan this QR Code</h1>
       <img src="${qrCodeData}" alt="QR Code" />
+      <p>Status: ${sessionStatus === 'waiting' ? 'Waiting for scan...' : ''}</p>
     `);
   } else {
-    res.send('<h1>Generating QR code...</h1>');
+    return res.send('<h1>Generating QR Code...</h1>');
   }
 });
 
+// Check session status
+app.get('/status', (req, res) => {
+  res.json({ status: sessionStatus });
+});
+
+// Default route
 app.get('/', (req, res) => {
   res.redirect('/qr');
 });
 
-// Export the app for Vercel
-module.exports = app;
+app.listen(port, () => {
+  console.log(`Server started on port ${port}`);
+});
