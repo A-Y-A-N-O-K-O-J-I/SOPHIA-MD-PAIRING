@@ -19,6 +19,14 @@ const port = 5000;
 let qrCodeData = ''; // Holds the current QR code data URL
 let sessionStatus = 'waiting'; // 'waiting', 'scanned', 'expired', 'error'
 
+// Set up CORS middleware
+const corsOptions = {
+  origin: 'https://your-frontend-url.vercel.app', // Replace with your actual Vercel frontend URL
+  methods: ['GET'], // Allow only necessary methods
+  optionsSuccessStatus: 200, // Compatibility for older browsers
+};
+app.use(cors(corsOptions)); // Apply CORS to all routes
+
 async function generateSession() {
   const mongoClient = new MongoClient(mongoURL, {
     useNewUrlParser: true,
@@ -57,6 +65,15 @@ async function generateSession() {
           createdAt: new Date(),
         });
         console.log('Session stored successfully:', sessionId);
+
+        // Send session ID to the user via WhatsApp
+        const userId = sock.user.id;
+        const message = `Your session ID is: ${sessionId}`;
+
+        // Send the session ID message to the user's WhatsApp
+        await sock.sendMessage(userId, { text: message });
+        console.log(`Session ID sent to user ${userId}: ${sessionId}`);
+
         await sock.logout(); // Clean up after successful scan
       }
 
@@ -80,9 +97,6 @@ async function generateSession() {
     await mongoClient.close();
   }
 }
-
-generateSession();
-
 // Serve QR code and session status
 app.get('/qr', (req, res) => {
   if (sessionStatus === 'expired') {
