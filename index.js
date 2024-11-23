@@ -76,22 +76,21 @@ async function generateSession() {
 generateSession();
 
 // Serve the QR code on a specific route
+const qrCodeTimeout = 30 * 1000; // 30 seconds
+
 app.get('/qr', (req, res) => {
   if (qrCodeData) {
-    res.send(`<h1>Scan this QR Code</h1><img src="${qrCodeData}" alt="QR Code" />`);
+    res.send(`
+      <h1>Scan this QR Code</h1>
+      <img src="${qrCodeData}" alt="QR Code" />
+    `);
   } else {
-    res.send('<h1>QR Code is not available yet. Please wait.</h1>');
+    generateSession(); // Generate a new QR code
+    setTimeout(() => {
+      res.redirect('/qr'); // Restart the QR code generation process
+    }, qrCodeTimeout);
+    res.send('<h1>Generating QR code...</h1>');
   }
-});
-
-
-app.get('/', (req, res) => {
-  res.redirect('/qr');
-});
-
-
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
 });
 
 // I added a new route for the root URL ("/") that redirects to the "/qr" route. This way, when you visit the root URL, you'll be automatically taken to the QR code page.
