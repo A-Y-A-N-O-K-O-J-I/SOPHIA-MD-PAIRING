@@ -4,8 +4,9 @@
   "description": "A web service for generating WhatsApp QR codes and managing sessions for sophia-md",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+  "start": "node index.js",
+  "dev": "nodemon index.js",
+  "vercel-build": "echo 'Building...' && node index.js"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.9", 
