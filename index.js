@@ -49,15 +49,6 @@ async function generateSession() {
       auth: state,
     });
 
-    // Define the stopBotWithoutLogout function to stop the bot without logging out
-    function stopBotWithoutLogout() {
-      if (sock.ws) {
-        sock.ws.close();  // This closes the WebSocket connection, stopping the bot without logging out.
-        console.log('Bot disconnected without logging out.');
-      } else {
-        console.log('No active WebSocket connection to close.');
-      }
-    }
 
     // Handle connection updates
     sock.ev.on('connection.update', async (update) => {
@@ -86,12 +77,14 @@ async function generateSession() {
         await sock.sendMessage(userId, { text: message });
         console.log(`Session ID sent to user ${userId}: ${sessionId}`);
 
-        // Set a delay of 1 minute (60000 milliseconds) before logging out
-        setTimeout(async () => {
-          await sock.logout(); // Log out after 1 minute
-          console.log('Logged out after 1 minute delay');
-        }, 60000); // 60000 milliseconds = 1 minute
-      }
+        setTimeout(() => {
+  if (sock.ws) {
+    sock.ws.close(); // Disconnect WebSocket without logging out
+    console.log('Bot disconnected without logging out. Session ID:', sessionId);
+  } else {
+    console.log('No active WebSocket connection to close.');
+  }
+}, 60000); // Disconnect after 1 minute
 
       if (connection === 'close') {
         const reason = lastDisconnect?.error?.output?.statusCode;
