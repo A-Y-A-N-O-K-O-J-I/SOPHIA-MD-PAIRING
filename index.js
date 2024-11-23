@@ -3,7 +3,7 @@ const QRCode = require('qrcode');
 const { MongoClient } = require('mongodb');
 const { v4: uuidv4 } = require('uuid');
 const makeWASocket = require('@whiskeysockets/baileys').default;
-const useMongoDBAuthState = require('./lib/mongoAuthState');
+const useMongoDBAuthState = require('./mongoAuthState');
 
 const mongoURL = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 const dbName = 'whatsapp_sessions';
