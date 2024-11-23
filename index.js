@@ -3,7 +3,7 @@ const QRCode = require('qrcode');
 const { MongoClient } = require('mongodb');
 const { v4: uuidv4 } = require('uuid');
 const makeWASocket = require('@whiskeysockets/baileys').default;
-const useMongoDBAuthState = require('./mongoAuthState');
+const useMongoDBAuthState = require('./lib/mongoAuthState');
 
 const mongoURL = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 const dbName = 'whatsapp_sessions';
@@ -26,7 +26,8 @@ async function generateSession() {
     const collection = mongoClient.db(dbName).collection(collectionName);
     const { state, saveCreds } = await useMongoDBAuthState(collection);
 
-    const sessionId = `SOPHIA_MD-${uuidv4()}`; // Generate session ID
+    const extraRandom = Math.random().toString(36).substring(2, 12).toUpperCase();
+    sessionId = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
 
     // Initialize socket
     const sock = makeWASocket({
@@ -40,6 +41,7 @@ async function generateSession() {
         qrCodeData = await QRCode.toDataURL(qr);
         console.log('QR Code generated for session ID:', sessionId);
       }
+
       if (connection === 'open') {
         // Store the session data in MongoDB
         await collection.insertOne({
@@ -52,10 +54,12 @@ async function generateSession() {
         console.log('Session stored successfully. Session ID:', sessionId);
 
         // Send session ID to the logged-in WhatsApp user
-        const loggedInUser = sock.user.id; // Get the logged-in user's ID
-        await sock.sendMessage(loggedInUser, { text: `Your session ID is: ${sessionId}` });
-        console.log('Session ID sent to the user on WhatsApp:', loggedInUser);
+        const loggedInUser = sock.user.id // Get the logged-in user's ID
+        await sock.sendMessage(loggedInUser, {
+          text: `Your session ID is: ${sessionId}`,
+        });
 
+        console.log('Session ID sent to the user on WhatsApp:', loggedInUser);
         await sock.logout(); // Log out after storing session
       }
     });
@@ -80,7 +84,14 @@ app.get('/qr', (req, res) => {
   }
 });
 
-// Start the Express server
+
+app.get('/', (req, res) => {
+  res.redirect('/qr');
+});
+
+
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
+
+// I added a new route for the root URL ("/") that redirects to the "/qr" route. This way, when you visit the root URL, you'll be automatically taken to the QR code page.
