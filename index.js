@@ -69,7 +69,7 @@ async function generateSession() {
   }
 }
 
-generateSessionLoop();
+generateSession()
 
 app.get('/qr', (req, res) => {
   if (qrCodeData) {
