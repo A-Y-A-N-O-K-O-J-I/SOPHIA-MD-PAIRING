@@ -16,15 +16,17 @@ const port = 3000;
 let qrCodeData = '';
 
 async function generateSessionLoop() {
+  let retryDelay = 5000; // initial retry delay
   while (true) {
     try {
       await generateSession();
     } catch (error) {
       console.error('Error generating session:', error);
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+      retryDelay *= 2; // exponential backoff
     }
   }
 }
-
 async function generateSession() {
   const mongoClient = new MongoClient(mongoURL, {
     useNewUrlParser: true,
