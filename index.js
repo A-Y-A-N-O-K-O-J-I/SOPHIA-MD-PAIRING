@@ -28,6 +28,9 @@ const corsOptions = {
 };
 app.use(cors(corsOptions)); // Apply CORS to all routes
 
+let retryAttempts = 0; // To keep track of the number of retries
+const maxRetries = 5;  // Max retries before giving up
+
 async function generateSession() {
   const mongoClient = new MongoClient(mongoURL, {
     useNewUrlParser: true,
@@ -70,12 +73,14 @@ async function generateSession() {
         // Send session ID to the user via WhatsApp
         const userId = sock.user.id;
         const message = `Your session ID is: ${sessionId}`;
-
-        // Send the session ID message to the user's WhatsApp
         await sock.sendMessage(userId, { text: message });
         console.log(`Session ID sent to user ${userId}: ${sessionId}`);
 
-        await sock.logout(); // Clean up after successful scan
+        // Set a delay of 1 minute (60000 milliseconds) before logging out
+        setTimeout(async () => {
+          await sock.logout(); // Log out after 1 minute
+          console.log('Logged out after 1 minute delay');
+        }, 60000); // 60000 milliseconds = 1 minute
       }
 
       if (connection === 'close') {
@@ -87,6 +92,15 @@ async function generateSession() {
         } else {
           sessionStatus = 'error';
           console.error('Connection error:', reason);
+          
+          // Retry logic for error 500 (stream errored out)
+          if (retryAttempts < maxRetries) {
+            retryAttempts++;
+            console.log(`Retrying session generation, attempt ${retryAttempts}/${maxRetries}...`);
+            setTimeout(generateSession, 5000); // Retry after 5 seconds
+          } else {
+            console.error('Max retries reached. Unable to generate session.');
+          }
         }
       }
     });
@@ -96,8 +110,13 @@ async function generateSession() {
     console.error('Error generating session:', error);
   } finally {
     await mongoClient.close();
+    // Ensure new session generation starts, even if there was an error
+    setTimeout(generateSession, 5000); // Retry session generation after 5 seconds
   }
 }
+
+// Start generating sessions right away
+generateSession();
 
 // Serve QR code and session status
 app.get('/qr', (req, res) => {
