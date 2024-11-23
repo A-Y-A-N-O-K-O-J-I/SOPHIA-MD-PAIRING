@@ -10,7 +10,7 @@ const { v4: uuidv4 } = require('uuid');
 const makeWASocket = require('@whiskeysockets/baileys').default;
 const useMongoDBAuthState = require('./mongoAuthState');
 
-const mongoURL = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+const mongoURL = process.env.MONGODB_URI || '';
 const dbName = 'whatsapp_sessions';
 const collectionName = 'auth_info_baileys';
 
