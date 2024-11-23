@@ -51,14 +51,14 @@ async function generateSession() {
       const { qr, connection, lastDisconnect } = update;
 
       if (qr) {
-        qrCodeData = await QRCode.toDataURL(qr);
+        qrCodeData = await QRCode.toDataURL(qr); // Generate QR code data URL
         sessionStatus = 'waiting'; // Reset status to waiting
         console.log('New QR code generated:', sessionId);
       }
 
       if (connection === 'open') {
         sessionStatus = 'scanned';
-        qrCodeData = ''; // Clear QR code
+        qrCodeData = ''; // Clear QR code after successful scan
         await collection.insertOne({
           sessionId,
           creds: state.creds,
@@ -98,6 +98,7 @@ async function generateSession() {
     await mongoClient.close();
   }
 }
+
 // Serve QR code and session status
 app.get('/qr', (req, res) => {
   if (sessionStatus === 'expired') {
@@ -125,6 +126,8 @@ app.get('/', (req, res) => {
   res.redirect('/qr');
 });
 
+// Start the server and generate session at the beginning
 app.listen(port, () => {
   console.log(`Server started on port ${port}`);
+  generateSession(); // Ensure session starts generating when the server starts
 });
