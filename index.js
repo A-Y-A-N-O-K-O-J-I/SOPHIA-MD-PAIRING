@@ -4,6 +4,7 @@ SO DON'T BELIEVE ANYONE THAT TELLS YOU THEY HELPED ME.
 
 const express = require('express');
 const QRCode = require('qrcode');
+const cors = require('cors'); // Import CORS
 const { MongoClient } = require('mongodb');
 const { v4: uuidv4 } = require('uuid');
 const makeWASocket = require('@whiskeysockets/baileys').default;
