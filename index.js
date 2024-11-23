@@ -49,7 +49,6 @@ async function generateSession() {
       auth: state,
     });
 
-
     // Handle connection updates
     sock.ev.on('connection.update', async (update) => {
       const { qr, connection, lastDisconnect } = update;
@@ -78,45 +77,51 @@ async function generateSession() {
         console.log(`Session ID sent to user ${userId}: ${sessionId}`);
 
         setTimeout(() => {
-  if (sock.ws) {
-    sock.ws.close(); // Disconnect WebSocket without logging out
-    console.log('Bot disconnected without logging out. Session ID:', sessionId);
-  } else {
-    console.log('No active WebSocket connection to close.');
-  }
-}, 60000); // Disconnect after 1 minute
-
-      try {
-  if (connection === 'close') {
-    const reason = lastDisconnect?.error?.output?.statusCode;
-    
-    if (reason === 408) {
-      sessionStatus = 'expired';
-      console.log('QR Code expired. Retrying...');
-      generateSession(); // Retry session generation on timeout
-    } else {
-      sessionStatus = 'error';
-      console.error('Connection error:', reason);
-
-      // Retry logic for error 500 (stream errored out)
-      if (retryAttempts < maxRetries) {
-        retryAttempts++;
-        console.log(`Retrying session generation, attempt ${retryAttempts}/${maxRetries}...`);
-        setTimeout(generateSession, 5000); // Retry after 5 seconds
-      } else {
-        console.error('Max retries reached. Unable to generate session.');
+          if (sock.ws) {
+            sock.ws.close(); // Disconnect WebSocket without logging out
+            console.log('Bot disconnected without logging out. Session ID:', sessionId);
+          } else {
+            console.log('No active WebSocket connection to close.');
+          }
+        }, 60000); // Disconnect after 1 minute
       }
-    }
+
+      // Handle the connection close scenario
+      try {
+        if (connection === 'close') {
+          const reason = lastDisconnect?.error?.output?.statusCode;
+          
+          if (reason === 408) {
+            sessionStatus = 'expired';
+            console.log('QR Code expired. Retrying...');
+            generateSession(); // Retry session generation on timeout
+          } else {
+            sessionStatus = 'error';
+            console.error('Connection error:', reason);
+
+            // Retry logic for error 500 (stream errored out)
+            if (retryAttempts < maxRetries) {
+              retryAttempts++;
+              console.log(`Retrying session generation, attempt ${retryAttempts}/${maxRetries}...`);
+              setTimeout(generateSession, 5000); // Retry after 5 seconds
+            } else {
+              console.error('Max retries reached. Unable to generate session.');
+            }
+          }
+        }
+
+        sock.ev.on('creds.update', saveCreds);
+      } catch (error) {
+        console.error('Error generating session:', error);
+      } finally {
+        await mongoClient.close();
+        // Ensure new session generation starts, even if there was an error
+        setTimeout(generateSession, 5000); // Retry session generation after 5 seconds
+      }
+    });
+  } catch (error) {
+    console.error('Error generating session:', error);
   }
-
-  sock.ev.on('creds.update', saveCreds);
-
-} catch (error) {
-  console.error('Error generating session:', error);
-} finally {
-  await mongoClient.close();
-  // Ensure new session generation starts, even if there was an error
-  setTimeout(generateSession, 5000); // Retry session generation after 5 seconds
 }
 
 // Start generating sessions right away
