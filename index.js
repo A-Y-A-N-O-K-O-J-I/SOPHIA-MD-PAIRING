@@ -35,6 +35,7 @@ async function generateSession() {
   const mongoClient = new MongoClient(mongoURL, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
+    ssl:true,
   });
 
   try {
