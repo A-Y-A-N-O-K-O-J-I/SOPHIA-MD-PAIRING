@@ -86,6 +86,5 @@ app.get('/', (req, res) => {
   res.redirect('/qr');
 });
 
-app.listen(port, () => {
-  console.log(`Server started on port ${port}`);
-});
+// Export the app for Vercel
+module.exports = app;
