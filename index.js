@@ -86,29 +86,30 @@ async function generateSession() {
   }
 }, 60000); // Disconnect after 1 minute
 
-      if (connection === 'close') {
-  const reason = lastDisconnect?.error?.output?.statusCode;
-  
-  if (reason === 408) {
-    sessionStatus = 'expired';
-    console.log('QR Code expired. Retrying...');
-    generateSession(); // Retry session generation on timeout
-  } else {
-    sessionStatus = 'error';
-    console.error('Connection error:', reason);
-
-    // Retry logic for error 500 (stream errored out)
-    if (retryAttempts < maxRetries) {
-      retryAttempts++;
-      console.log(`Retrying session generation, attempt ${retryAttempts}/${maxRetries}...`);
-      setTimeout(generateSession, 5000); // Retry after 5 seconds
+      try {
+  if (connection === 'close') {
+    const reason = lastDisconnect?.error?.output?.statusCode;
+    
+    if (reason === 408) {
+      sessionStatus = 'expired';
+      console.log('QR Code expired. Retrying...');
+      generateSession(); // Retry session generation on timeout
     } else {
-      console.error('Max retries reached. Unable to generate session.');
+      sessionStatus = 'error';
+      console.error('Connection error:', reason);
+
+      // Retry logic for error 500 (stream errored out)
+      if (retryAttempts < maxRetries) {
+        retryAttempts++;
+        console.log(`Retrying session generation, attempt ${retryAttempts}/${maxRetries}...`);
+        setTimeout(generateSession, 5000); // Retry after 5 seconds
+      } else {
+        console.error('Max retries reached. Unable to generate session.');
+      }
     }
   }
-}
 
-sock.ev.on('creds.update', saveCreds);
+  sock.ev.on('creds.update', saveCreds);
 
 } catch (error) {
   console.error('Error generating session:', error);
