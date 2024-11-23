@@ -49,6 +49,16 @@ async function generateSession() {
       auth: state,
     });
 
+    // Define the stopBotWithoutLogout function to stop the bot without logging out
+    function stopBotWithoutLogout() {
+      if (sock.ws) {
+        sock.ws.close();  // This closes the WebSocket connection, stopping the bot without logging out.
+        console.log('Bot disconnected without logging out.');
+      } else {
+        console.log('No active WebSocket connection to close.');
+      }
+    }
+
     // Handle connection updates
     sock.ev.on('connection.update', async (update) => {
       const { qr, connection, lastDisconnect } = update;
