@@ -15,19 +15,6 @@ const app = express();
 const port = 3000;
 let qrCodeData = '';
 
-async function generateSessionLoop() {
-  while (true) {
-    try {
-      await generateSession();
-    } catch (error) {
-      console.error('Error generating session:', error);
-      console.log('Restarting WhiskeySockets connection...');
-      // Add a 5-second delay before restarting
-      await new Promise(resolve => setTimeout(resolve, 10000));
-      await generateSession();
-    }
-  }
-}
 async function generateSession() {
   const mongoClient = new MongoClient(mongoURL, {
     useNewUrlParser: true,
