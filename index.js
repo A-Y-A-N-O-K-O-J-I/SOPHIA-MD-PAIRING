@@ -22,7 +22,7 @@ let sessionStatus = 'waiting'; // 'waiting', 'scanned', 'expired', 'error'
 
 // Set up CORS middleware
 const corsOptions = {
-  origin: 'https://ayanokoji-qr.onrender.com', // Replace with your actual Vercel frontend URL
+  origin: 'https://sophia-md-pair.vercel.app', // Replace with your actual Vercel frontend URL
   methods: ['GET'], // Allow only necessary methods
   optionsSuccessStatus: 200, // Compatibility for older browsers
 };
