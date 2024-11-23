@@ -3,7 +3,7 @@ const QRCode = require('qrcode');
 const { MongoClient } = require('mongodb');
 const { v4: uuidv4 } = require('uuid');
 const makeWASocket = require('@whiskeysockets/baileys').default;
-const useMongoDBAuthState = require('./mongoAuthState');
+const useMongoDBAuthState = require('./lib/mongoAuthState');
 
 const mongoURL = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 const dbName = 'whatsapp_sessions';
@@ -13,8 +13,6 @@ const app = express();
 const port = 3000;
 
 let qrCodeData = '';
-let sessionId = '';
-let sock; // Global socket variable to use it for sending the session ID
 
 async function generateSession() {
   const mongoClient = new MongoClient(mongoURL, {
@@ -27,9 +25,8 @@ async function generateSession() {
     await mongoClient.connect();
     const collection = mongoClient.db(dbName).collection(collectionName);
     const { state, saveCreds } = await useMongoDBAuthState(collection);
-    
-    const extraRandom = Math.random().toString(36).substring(2, 12).toUpperCase();
-    sessionId = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
+
+    const sessionId = `SOPHIA_MD-${uuidv4()}`; // Generate session ID
 
     // Initialize socket
     const sock = makeWASocket({
@@ -44,9 +41,7 @@ async function generateSession() {
         console.log('QR Code generated for session ID:', sessionId);
       }
       if (connection === 'open') {
-        await sock.sendMessage(sock.user.id, { text: `Session ID: ${sessionId}` });
-        console.log('Session ID sent to user:', sessionId);
-
+        // Store the session data in MongoDB
         await collection.insertOne({
           sessionId,
           creds: state.creds,
@@ -55,7 +50,13 @@ async function generateSession() {
         });
 
         console.log('Session stored successfully. Session ID:', sessionId);
-        await sock.logout();
+
+        // Send session ID to the logged-in WhatsApp user
+        const loggedInUser = sock.user.id; // Get the logged-in user's ID
+        await sock.sendMessage(loggedInUser, { text: `Your session ID is: ${sessionId}` });
+        console.log('Session ID sent to the user on WhatsApp:', loggedInUser);
+
+        await sock.logout(); // Log out after storing session
       }
     });
 
@@ -67,23 +68,11 @@ async function generateSession() {
   }
 }
 
-// Function to keep sending the QR code as base64 every 6 seconds
-function sendQRCodePeriodically() {
-  setInterval(async () => {
-    if (qrCodeData) {
-      console.log('Sending QR code in base64...');
-      await console.log( `QR Code: ${qrCodeData}`);
-    } else {
-      console.log('QR Code not ready yet...');
-    }
-  }, 6000); // Send QR code every 6 seconds
-}
-
+// Generate the session and QR code on app start
 generateSession();
-sendQRCodePeriodically();
 
 // Serve the QR code on a specific route
-app.get('/', (req, res) => {
+app.get('/qr', (req, res) => {
   if (qrCodeData) {
     res.send(`<h1>Scan this QR Code</h1><img src="${qrCodeData}" alt="QR Code" />`);
   } else {
