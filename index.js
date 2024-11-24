@@ -29,14 +29,33 @@ app.use(cors({
 let retryAttempts = 0;
 const maxRetries = 5;
 
-const generateSession = async () => {
+
+
+app.get('/qr', (req, res) => {
+  if (sessionStatus === 'expired') {
+    return res.send('<h1>QR Code expired. Reload the page to generate a new one.</h1>');
+  }
+
+  if (qrCodeData) {
+    return res.send(`
+      <h1>Scan this QR Code</h1>
+      <img src="${qrCodeData}" alt="QR Code" />
+      <p>Status: ${sessionStatus === 'waiting' ? 'Waiting for scan...' : ''}</p>
+    `);
+  } else {
+    return res.send('<h1>Generating QR Code...</h1>');
+  }
+});
+
+app.get('/status', (req, res) => {
+  res.json({ status:const generateSession = async () => {
   const mongoClient = new MongoClient(mongoURL, { ssl: true, tls: true });
 
   try {
     await mongoClient.connect();
     const collection = mongoClient.db(dbName).collection(collectionName);
-    const { state, saveCreds } = await useMongoDBAuthState(collection);
 
+    const { state, saveCreds } = await useMongoDBAuthState(collection);
     const extraRandom = Math.random().toString(36).substring(2, 12).toUpperCase();
     const sessionId = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
 
@@ -58,6 +77,8 @@ const generateSession = async () => {
       if (connection === 'open') {
         sessionStatus = 'scanned';
         qrCodeData = ''; // Clear QR code after successful scan
+
+        // Store session data in MongoDB
         await collection.insertOne({
           sessionId,
           creds: state.creds,
@@ -66,6 +87,7 @@ const generateSession = async () => {
         });
         console.log('Session stored successfully:', sessionId);
 
+        // Send session ID to the user
         const userId = sock.user.id;
         const message = `Your session ID is: ${sessionId}`;
         await sock.sendMessage(userId, { text: message });
@@ -74,8 +96,10 @@ const generateSession = async () => {
         // Disconnect WebSocket after 1 minute
         setTimeout(() => {
           if (sock.ws) {
-            sock.ws.close();
-            console.log('Bot disconnected after 1 minute. Session ID:', sessionId);
+            console.log('Disconnecting WebSocket...');
+            sock.ws.close(); // Disconnect WebSocket without logging out
+            sessionStatus = 'disconnected';
+            console.log('WebSocket connection closed.');
           } else {
             console.log('No active WebSocket connection to close.');
           }
@@ -90,7 +114,7 @@ const generateSession = async () => {
           if (retryAttempts < maxRetries) {
             retryAttempts++;
             console.log(`Retry attempt #${retryAttempts}`);
-            generateSession(); // Retry session generation
+            setTimeout(() => generateSession(), 15000); // Retry after 15 seconds
           } else {
             console.log('Max retries reached. Stopping...');
           }
@@ -108,26 +132,7 @@ const generateSession = async () => {
   } finally {
     await mongoClient.close();
   }
-};
-
-app.get('/qr', (req, res) => {
-  if (sessionStatus === 'expired') {
-    return res.send('<h1>QR Code expired. Reload the page to generate a new one.</h1>');
-  }
-
-  if (qrCodeData) {
-    return res.send(`
-      <h1>Scan this QR Code</h1>
-      <img src="${qrCodeData}" alt="QR Code" />
-      <p>Status: ${sessionStatus === 'waiting' ? 'Waiting for scan...' : ''}</p>
-    `);
-  } else {
-    return res.send('<h1>Generating QR Code...</h1>');
-  }
-});
-
-app.get('/status', (req, res) => {
-  res.json({ status: sessionStatus });
+}; sessionStatus });
 });
 
 app.get('/', (req, res) => {
