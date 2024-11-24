@@ -48,7 +48,10 @@ app.get('/qr', (req, res) => {
 });
 
 app.get('/status', (req, res) => {
-  res.json({ status:const generateSession = async () => {
+  res.json({ status:sessionStatus });
+});
+    
+    const generateSession = async () => {
   const mongoClient = new MongoClient(mongoURL, { ssl: true, tls: true });
 
   try {
