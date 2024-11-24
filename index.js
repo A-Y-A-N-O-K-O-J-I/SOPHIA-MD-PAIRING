@@ -63,7 +63,10 @@ const generateSession = async () => {
     const extraRandom = Math.random().toString(36).substring(2, 12).toUpperCase();
     const sessionId = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
 
-    const sock = makeWASocket({ auth: state });
+    const sock = makeWASocket({ auth: state,
+                              browser: Browsers.macOS("Desktop"),
+                              syncFullHistory: false
+})});
 
     sock.ev.on('connection.update', async (update) => {
       const { qr, connection, lastDisconnect } = update;
