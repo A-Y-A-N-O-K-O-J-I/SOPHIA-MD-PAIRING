@@ -8,7 +8,7 @@ const { MongoClient } = require('mongodb');
 const { v4: uuidv4 } = require('uuid');
 const makeWASocket = require('@whiskeysockets/baileys').default;
 const useMongoDBAuthState = require('./mongoAuthState');
-
+const { Browsers } = require('@whiskeysockets/baileys');
 const mongoURL = process.env.MONGODB_URI || '';
 const dbName = 'whatsapp_sessions';
 const collectionName = 'auth_info_baileys';
