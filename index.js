@@ -29,8 +29,7 @@ app.use(cors({
 let retryAttempts = 0;
 const maxRetries = 5;
 
-
-
+// QR Code Route
 app.get('/qr', (req, res) => {
   if (sessionStatus === 'expired') {
     return res.send('<h1>QR Code expired. Reload the page to generate a new one.</h1>');
@@ -47,11 +46,13 @@ app.get('/qr', (req, res) => {
   }
 });
 
+// Status Route
 app.get('/status', (req, res) => {
-  res.json({ status:sessionStatus });
+  res.json({ status: sessionStatus });
 });
-    
-    const generateSession = async () => {
+
+// Generate Session Function
+const generateSession = async () => {
   const mongoClient = new MongoClient(mongoURL, { ssl: true, tls: true });
 
   try {
@@ -135,13 +136,14 @@ app.get('/status', (req, res) => {
   } finally {
     await mongoClient.close();
   }
-}; sessionStatus });
-});
+};
 
+// Redirect root route to QR route
 app.get('/', (req, res) => {
   res.redirect('/qr');
 });
 
+// Start server
 app.listen(port, () => {
   console.log(`Server started on port ${port}`);
   generateSession();
