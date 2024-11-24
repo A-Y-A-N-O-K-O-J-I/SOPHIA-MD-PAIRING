@@ -66,7 +66,7 @@ const generateSession = async () => {
     const sock = makeWASocket({ auth: state,
                               browser: Browsers.macOS("Desktop"),
                               syncFullHistory: false
-})});
+});
 
     sock.ev.on('connection.update', async (update) => {
       const { qr, connection, lastDisconnect } = update;
