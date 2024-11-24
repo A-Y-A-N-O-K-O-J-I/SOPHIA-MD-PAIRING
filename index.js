@@ -1,153 +1,108 @@
-/* NO ONE HELPED ME IN THE DEVELOPMENT OF QR CODE METHOD OF SOPHIA MD I DID IT ALL ON MY OWN
-SO DON'T BELIEVE ANYONE THAT TELLS YOU THEY HELPED ME.
-*/
-const express = require('express');
+const { Pool } = require('pg'); // PostgreSQL library
 const QRCode = require('qrcode');
-const cors = require('cors');
-const { MongoClient } = require('mongodb');
-const { v4: uuidv4 } = require('uuid');
-const makeWASocket = require('@whiskeysockets/baileys').default;
-const useMongoDBAuthState = require('./mongoAuthState');
-const { Browsers } = require('@whiskeysockets/baileys');
-const mongoURL = process.env.MONGODB_URI || '';
-const dbName = 'whatsapp_sessions';
-const collectionName = 'auth_info_baileys';
-
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const { default: makeWASocket, useMultiFileAuthState } = require('@whiskysockets/baileys');
 const app = express();
-const port = 5000;
 
-let qrCodeData = '';
-let sessionStatus = 'waiting';
+const pool = new Pool({
+  connectionString: 'YOUR_DATABASE_URL', // Replace with your PostgreSQL database URL
+});
 
-// Set up CORS middleware (with optional local development support)
-app.use(cors({
-  origin: ['https://sophia-md-pair.vercel.app', 'http://localhost:3000'], // Add local dev support if necessary
-  methods: ['GET'],
-  optionsSuccessStatus: 200,
-}));
+let connectionStatus = { status: 'waiting' }; // Track QR code status globally
 
-let retryAttempts = 0;
-const maxRetries = 5;
-
-// QR Code Route
-app.get('/qr', (req, res) => {
-  if (sessionStatus === 'expired') {
-    return res.send('<h1>QR Code expired. Reload the page to generate a new one.</h1>');
+// Helper: Remove a directory
+function removeFile(filePath) {
+  if (fs.existsSync(filePath)) {
+    fs.rmSync(filePath, { recursive: true, force: true });
   }
+}
 
-  if (qrCodeData) {
-    return res.send(`
-      <h1>Scan this QR Code</h1>
-      <img src="${qrCodeData}" alt="QR Code" />
-      <p>Status: ${sessionStatus === 'waiting' ? 'Waiting for scan...' : ''}</p>
-    `);
-  } else {
-    return res.send('<h1>Generating QR Code...</h1>');
-  }
-});
+// Route: Generate QR code
+app.get('/qr', async (req, res) => {
+  const sessionID = `SOPHIA_MD-${Math.random().toString(36).slice(2, 10)}`; // Generate unique session ID
 
-// Status Route
-app.get('/status', (req, res) => {
-  res.json({ status: sessionStatus });
-});
+  async function initializeQRSession() {
+    const { state, saveCreds } = await useMultiFileAuthState(`./temp/${sessionID}`);
 
-// Generate Session Function
-const generateSession = async () => {
-  const mongoClient = new MongoClient(mongoURL, { ssl: true, tls: true });
-
-  try {
-    await mongoClient.connect();
-    const collection = mongoClient.db(dbName).collection(collectionName);
-
-    const { state, saveCreds } = await useMongoDBAuthState(collection);
-    const extraRandom = Math.random().toString(36).substring(2, 12).toUpperCase();
-    const sessionId = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
-
-    const sock = makeWASocket({ auth: state,
-                              browser: Browsers.macOS("Desktop"),
-                              syncFullHistory: false
-});
-
-    sock.ev.on('connection.update', async (update) => {
-      const { qr, connection, lastDisconnect } = update;
-
-      if (qr) {
-        try {
-          qrCodeData = await QRCode.toDataURL(qr);
-        } catch (error) {
-          console.error('Error generating QR code:', error);
-        }
-        sessionStatus = 'waiting';
-        console.log('New QR code generated:', sessionId);
-      }
-
-      if (connection === 'open') {
-        sessionStatus = 'scanned';
-        qrCodeData = ''; // Clear QR code after successful scan
-
-        // Store session data in MongoDB
-        await collection.insertOne({
-          sessionId,
-          creds: state.creds,
-          status: 'generated',
-          createdAt: new Date(),
-        });
-        console.log('Session stored successfully:', sessionId);
-
-        // Send session ID to the user
-        const userId = sock.user.id;
-        const message = `Your session ID is: ${sessionId}`;
-        await sock.sendMessage(userId, { text: message });
-        console.log(`Session ID sent to user ${userId}: ${sessionId}`);
-
-        // Disconnect WebSocket after 1 minute
-        setTimeout(() => {
-          if (sock.ws) {
-            console.log('Disconnecting WebSocket...');
-            sock.ws.close(); // Disconnect WebSocket without logging out
-            sessionStatus = 'disconnected';
-            console.log('WebSocket connection closed.');
-          } else {
-            console.log('No active WebSocket connection to close.');
-          }
-        }, 60000); // Disconnect after 1 minute
-      }
-
-      if (connection === 'close') {
-        const reason = lastDisconnect?.error?.output?.statusCode;
-        if (reason === 408) {
-          sessionStatus = 'expired';
-          console.log('QR Code expired. Retrying...');
-          if (retryAttempts < maxRetries) {
-            retryAttempts++;
-            console.log(`Retry attempt #${retryAttempts}`);
-            setTimeout(() => generateSession(), 15000); // Retry after 15 seconds
-          } else {
-            console.log('Max retries reached. Stopping...');
-          }
-          return;
-        } else {
-          sessionStatus = 'error';
-          console.error('Connection error:', reason);
-        }
-      }
+    try {
+      const sock = makeWASocket({
+        auth: state,
+        printQRInTerminal: false,
+      });
 
       sock.ev.on('creds.update', saveCreds);
-    });
-  } catch (error) {
-    console.error('Error generating session:', error);
-  } finally {
-    await mongoClient.close();
-  }
-};
 
-// Redirect root route to QR route
-app.get('/', (req, res) => {
-  res.redirect('/qr');
+      sock.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect, qr } = update;
+
+        // Serve the QR code to the client
+        if (qr) {
+          res.writeHead(200, { 'Content-Type': 'image/png' });
+          res.end(await QRCode.toBuffer(qr));
+        }
+
+        // QR code scanned and connection established
+        if (connection === 'open') {
+          connectionStatus = { status: 'scanned' };
+
+          // Delay to ensure credentials are saved
+          await new Promise(resolve => setTimeout(resolve, 5000));
+
+          // Read and encode credentials to Base64
+          const credsPath = path.join(__dirname, `temp/${sessionID}/creds.json`);
+          const credsData = fs.readFileSync(credsPath);
+          const base64Data = Buffer.from(credsData).toString('base64');
+
+          // Store Base64 data in PostgreSQL
+          const client = await pool.connect();
+          try {
+            await client.query(
+              'INSERT INTO sessions (session_id, base64_creds) VALUES ($1, $2)',
+              [sessionID, base64Data]
+            );
+            console.log(`Session ${sessionID} stored in PostgreSQL.`);
+          } catch (dbError) {
+            console.error('Error saving to PostgreSQL:', dbError);
+          } finally {
+            client.release();
+          }
+
+          // Clean up temp files
+          removeFile(`temp/${sessionID}`);
+          console.log(`Temporary files for session ${sessionID} removed.`);
+
+          // Notify the user and close connection
+          await sock.sendMessage(sock.user.id, { text: `Session created successfully! ID: ${sessionID}` });
+          await sock.ws.close();
+        }
+
+        // Handle reconnections
+        if (connection === 'close' && lastDisconnect?.error?.output?.statusCode !== 401) {
+          console.log('Reconnecting...');
+          initializeQRSession();
+        }
+      });
+    } catch (error) {
+      console.error('Error initializing session:', error);
+      connectionStatus = { status: 'error' };
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Service Unavailable' });
+      }
+    }
+  }
+
+  await initializeQRSession();
 });
 
-// Start server
-app.listen(port, () => {
-  console.log(`Server started on port ${port}`);
-  generateSession();
+// Route: Check QR Code status
+app.get('/status', (req, res) => {
+  res.json(connectionStatus);
+});
+
+// Start the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
