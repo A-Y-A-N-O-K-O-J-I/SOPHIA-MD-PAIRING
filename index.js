@@ -33,7 +33,6 @@ const maxRetries = 5;  // Max retries before giving up
 
 async function generateSession() {
   const mongoClient = new MongoClient(mongoURL, {
-    useNewUrlParser: true,
     ssl:true,
     tls:true,
   });
