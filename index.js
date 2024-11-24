@@ -31,7 +31,7 @@ app.use(cors(corsOptions)); // Apply CORS to all routes
 let retryAttempts = 0; // To keep track of the number of retries
 const maxRetries = 5;  // Max retries before giving up
 
-async function generateSession() {
+const generateSession = async () => {
   const mongoClient = new MongoClient(mongoURL, {
     ssl:true,
     tls:true,
@@ -49,13 +49,12 @@ async function generateSession() {
       auth: state,
     });
 
-    // Handle connection updates
     sock.ev.on('connection.update', async (update) => {
       const { qr, connection, lastDisconnect } = update;
 
       if (qr) {
         qrCodeData = await QRCode.toDataURL(qr); // Generate QR code data URL
-        sessionStatus = 'waiting'; // Reset status to waiting
+        sessionStatus = 'waiting';
         console.log('New QR code generated:', sessionId);
       }
 
@@ -76,9 +75,10 @@ async function generateSession() {
         await sock.sendMessage(userId, { text: message });
         console.log(`Session ID sent to user ${userId}: ${sessionId}`);
 
+        // Disconnect WebSocket after 1 minute
         setTimeout(() => {
           if (sock.ws) {
-            sock.ws.close(); // Disconnect WebSocket without logging out
+            sock.ws.close();
             console.log('Bot disconnected without logging out. Session ID:', sessionId);
           } else {
             console.log('No active WebSocket connection to close.');
@@ -86,46 +86,26 @@ async function generateSession() {
         }, 60000); // Disconnect after 1 minute
       }
 
-      // Handle the connection close scenario
-      try {
-        if (connection === 'close') {
-          const reason = lastDisconnect?.error?.output?.statusCode;
-          
-          if (reason === 408) {
-            sessionStatus = 'expired';
-            console.log('QR Code expired. Retrying...');
-            generateSession(); // Retry session generation on timeout
-          } else {
-            sessionStatus = 'error';
-            console.error('Connection error:', reason);
-
-            // Retry logic for error 500 (stream errored out)
-            if (retryAttempts < maxRetries) {
-              retryAttempts++;
-              console.log(`Retrying session generation, attempt ${retryAttempts}/${maxRetries}...`);
-              setTimeout(generateSession, 5000); // Retry after 5 seconds
-            } else {
-              console.error('Max retries reached. Unable to generate session.');
-            }
-          }
-        }
-
-        sock.ev.on('creds.update', saveCreds);
-      } catch (error) {
-        console.error('Error generating session:', error);
-      } finally {
-        await mongoClient.close();
-        // Ensure new session generation starts, even if there was an error
-        setTimeout(generateSession, 5000); // Retry session generation after 5 seconds
-      }
-    });
-  } catch (error) {
-    console.error('Error generating session:', error);
+      if (connection === 'close') {
+  const reason = lastDisconnect?.error?.output?.statusCode;
+  if (reason === 408) {
+    sessionStatus = 'expired';
+    console.log('QR Code expired. Retrying...');
+    return; // Exit early instead of retrying recursively
+  } else {
+    sessionStatus = 'error';
+    console.error('Connection error:', reason);
   }
 }
 
-// Start generating sessions right away
-generateSession();
+sock.ev.on('creds.update', saveCreds);
+
+} catch (error) {
+  console.error('Error generating session:', error);
+} finally {
+  await mongoClient.close();
+  // Remove unnecessary retries here
+}
 
 // Serve QR code and session status
 app.get('/qr', (req, res) => {
