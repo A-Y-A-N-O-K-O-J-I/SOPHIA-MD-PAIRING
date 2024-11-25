@@ -1,6 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 const makeWASocket = require('@whiskeysockets/baileys').default;
-const { useMultiFileAuthState, makeCacheableSignalKeyStore, Browsers } = require('@whiskeysockets/baileys');
+const { useMultiFileAuthState,delay ,makeCacheableSignalKeyStore, Browsers } = require('@whiskeysockets/baileys');
 const { Pool } = require('pg');
 const fs = require('fs');
 const pino = require('pino');
@@ -33,6 +33,7 @@ async function generatePairingCode(req, res) {
             sock.ev.on('creds.update', saveCreds);
 
             if (!sock.authState.creds.registered) {
+                await delay(1500);
                 let num = req.query.number || '';
                 num = num.replace(/[^0-9]/g, ''); // Sanitize the number
                 console.log(`Requesting pairing code for number: ${num}`);
