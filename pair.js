@@ -20,8 +20,12 @@ async function generatePairingCode(req, res) {
         const { state, saveCreds } = await useMultiFileAuthState(`./temp/${sessionID}`);
 
         try {
+            // Create the WebSocket connection with the key caching integrated
             const sock = makeWASocket({
-                auth: state,
+                auth: {
+                    creds: state.creds,  // Credentials
+                    keys: makeCacheableSignalKeyStore(state.keys, console), // Use the cacheable signal key store
+                },
                 printQRInTerminal: false, // Disable terminal QR
             });
 
