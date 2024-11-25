@@ -28,7 +28,6 @@ async function generatePairingCode(req, res) {
                 },
                 logger: P,
                 browser: ["Chrome (Linux)", "", ""],
-                mobile: false,
                 printQRInTerminal: false,
             });
 
