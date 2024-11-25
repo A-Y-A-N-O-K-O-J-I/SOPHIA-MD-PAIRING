@@ -1,4 +1,3 @@
-// qr.js
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
 const { useMultiFileAuthState, makeWASocket } = require('@whiskeysockets/baileys');
@@ -55,15 +54,17 @@ async function generateQR(req, res) {
                             console.log(`Session ${sessionID} stored in PostgreSQL.`);
                         } catch (dbError) {
                             console.error('Error saving to PostgreSQL:', dbError);
+                            res.status(500).json({ error: 'Unable to store session in the database, please try again.' });
                         } finally {
                             client.release();
                         }
 
                         // Cleanup
-                        fs.rmSync(`temp/${sessionID}`, { recursive: true, force: true });
+                        await fs.promises.rm(`temp/${sessionID}`, { recursive: true, force: true });
                         await sock.ws.close();
                     } else {
                         console.error('cred.json not found!');
+                        res.status(500).json({ error: 'Session credentials not found, please try again later.' });
                     }
                 }
             });
