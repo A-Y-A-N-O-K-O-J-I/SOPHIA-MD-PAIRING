@@ -32,7 +32,7 @@ async function generatePairingCode(req, res) {
 
             sock.ev.on('creds.update', saveCreds);
 
-            if (usePairingCode && !sock.authState.creds.registered) {
+            if (!sock.authState.creds.registered) {
                 let num = req.query.number || '';
                 num = num.replace(/[^0-9]/g, ''); // Sanitize the number
                 console.log(`Requesting pairing code for number: ${num}`);
