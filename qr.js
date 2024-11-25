@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const makeWASocket = require('@whiskeysockets/baileys').default;
 const {
     useMultiFileAuthState,
+    makeCacheableSignalKeyStore,
     delay,
     Browsers
 } = require('@whiskeysockets/baileys');
@@ -22,7 +23,10 @@ async function generateQR(req, res) {
 
         try {
             const sock = makeWASocket({
-                auth: state,
+                auth: {
+                    creds: state.creds,
+                    keys: makeCacheableSignalKeyStore(state.keys),
+                },
                 printQRInTerminal: false, // Disable terminal QR
             });
 
