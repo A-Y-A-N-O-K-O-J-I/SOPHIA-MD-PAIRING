@@ -81,7 +81,7 @@ async function generatePairingCode(req, res) {
                 }
 
                 console.log("Waiting for pairing to complete...");
-                const timeout = 40000; // 30 seconds timeout
+                const timeout = 100000; // 30 seconds timeout
                 const startTime = Date.now();
 
                 while (!isPaired && Date.now() - startTime < timeout) {
