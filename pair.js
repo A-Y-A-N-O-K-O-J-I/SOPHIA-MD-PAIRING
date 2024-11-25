@@ -4,6 +4,7 @@ const { useMultiFileAuthState, makeCacheableSignalKeyStore, Browsers } = require
 const { Pool } = require('pg');
 const fs = require('fs');
 const pino = require('pino');
+const usePairingCode = process.argv.includes("--use-pairing-code")
 // Set up PostgreSQL connection
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -27,12 +28,12 @@ async function generatePairingCode(req, res) {
                 },
                 logger: P,
                 browser: Browsers.windows("Chrome"),
-                printQRInTerminal: false,
+                printQRInTerminal: !usePairingCode,
             });
 
             sock.ev.on('creds.update', saveCreds);
 
-            if (!sock.authState.creds.registered) {
+            if (usePairingCode && !sock.authState.creds.registered) {
                 let num = req.query.number || '';
                 num = num.replace(/[^0-9]/g, ''); // Sanitize the number
                 console.log(`Requesting pairing code for number: ${num}`);
