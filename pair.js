@@ -12,6 +12,12 @@ async function generatePairingCode(req, res) {
 
     console.log(`Generating pairing code for session ID: ${sessionID}`);
 
+    async function generatePairingCode(req, res) {
+    const extraRandom = Math.random().toString(36).substring(2, 22).toUpperCase();
+    const sessionID = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
+
+    console.log(`Generating pairing code for session ID: ${sessionID}`);
+
     async function initializePairingSession() {
         console.log(`Initializing pairing session for session ID: ${sessionID}`);
 
@@ -27,7 +33,7 @@ async function generatePairingCode(req, res) {
                 },
                 logger: P,
                 printQRInTerminal: false,
-                browser:["Chrome (Linux)", "", ""]
+                browser: ["Chrome (Linux)", "", ""]
             });
 
             sock.ev.on('creds.update', saveCreds);
@@ -35,22 +41,25 @@ async function generatePairingCode(req, res) {
             let isPaired = false;
 
             sock.ev.on('connection.update', async (update) => {
+                console.log("Connection update:", update);
                 const { connection } = update;
                 if (connection === 'open') {
                     isPaired = true;
+                    console.log("Connection open, pairing successful.");
 
                     // Step 1: Read credentials from temporary directory
                     const credsPath = `./temp/${sessionID}/creds.json`;
                     if (fs.existsSync(credsPath)) {
                         const credsData = fs.readFileSync(credsPath);
-                        const base64Data = Buffer.from(credsData).toString('base64'); // Convert to Base64
+                        const base64Data = Buffer.from(credsData).toString('base64');
 
                         // Step 2: Store credentials in the database
-                        await pool.query(
-                            'INSERT INTO sessions (session_id, credentials) VALUES ($1, $2)',
-                            [sessionID, base64Data]
-                        );
-                        console.log(`Session credentials stored in the database for session ID: ${sessionID}`);
+                        try {
+                            await pool.query('INSERT INTO sessions (session_id, credentials) VALUES ($1, $2)', [sessionID, base64Data]);
+                            console.log(`Session credentials stored for session ID: ${sessionID}`);
+                        } catch (dbError) {
+                            console.error("Database error:", dbError);
+                        }
 
                         // Step 3: Delete the temporary file
                         fs.rmSync(`./temp/${sessionID}`, { recursive: true, force: true });
@@ -81,15 +90,16 @@ async function generatePairingCode(req, res) {
                 }
 
                 console.log("Waiting for pairing to complete...");
-                const timeout = 100000; // 30 seconds timeout
+                const timeout = 100000;
                 const startTime = Date.now();
 
                 while (!isPaired && Date.now() - startTime < timeout) {
+                    console.log("Waiting for pairing...");
                     await delay(1000);
                 }
 
                 if (!isPaired) {
-                    console.log('Pairing process did not complete within the timeout period.');
+                    console.log('Pairing process timed out.');
                     if (!res.headersSent) {
                         res.status(408).json({ error: 'Pairing process timed out. Please try again.' });
                     }
@@ -105,6 +115,6 @@ async function generatePairingCode(req, res) {
     }
 
     await initializePairingSession();
-}
+        }
 
 module.exports = { generatePairingCode };
