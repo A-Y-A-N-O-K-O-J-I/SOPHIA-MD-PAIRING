@@ -9,7 +9,7 @@
   "vercel-build": "echo 'Building...' && node index.js"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "^6.5.0", 
+    "@whiskeysockets/baileys": "^6.7.9", 
     "express": "^4.21.1",
     "mongodb": "^6.11.0",
     "mongoose": "^7.4.4",
