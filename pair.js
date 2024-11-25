@@ -20,7 +20,7 @@ async function generatePairingCode(req, res) {
         const { state, saveCreds } = await useMultiFileAuthState(`./temp/${sessionID}`);
 
         try {
-            // Create the WebSocket connection with the key caching integrated
+            // Create the WebSocket connection with key caching integrated
             const sock = makeWASocket({
                 auth: {
                     creds: state.creds,  // Credentials
@@ -28,7 +28,7 @@ async function generatePairingCode(req, res) {
                 },
                 printQRInTerminal: false,
                 browser: Browsers.windows("Chrome"), // Disable terminal QR
-             });
+            });
 
             sock.ev.on('creds.update', saveCreds);
 
@@ -47,42 +47,39 @@ async function generatePairingCode(req, res) {
                             res.send({ code });
                         }
 
-                        // Wait for 5 seconds after pairing code is linked
+                        // Wait for 15 seconds after pairing code is linked
                         await new Promise(resolve => setTimeout(resolve, 15000));
 
                         // Handle credentials and cleanup
                         const credsPath = `./temp/${sessionID}/creds.json`;
 
-if (!fs.existsSync(credsPath)) {
-    // If creds.json doesn't exist, log a warning and stop the process
-    console.log('Warning: creds.json file not found. Please pair again.');
-    // Optionally, you can trigger the pairing process again here if you want
-    return; // Exit early and prompt user to pair again
-} else {
-    // If creds.json exists, proceed with the session storage and cleanup
-    console.log('creds.json file exists. Proceeding...');
+                        if (!fs.existsSync(credsPath)) {
+                            console.log('Warning: creds.json file not found. Please pair again.');
+                            return; // Exit early and prompt user to pair again
+                        } else {
+                            console.log('creds.json file exists. Proceeding...');
 
-    const credsData = fs.readFileSync(credsPath);
-    const base64Data = Buffer.from(credsData).toString('base64');
+                            const credsData = fs.readFileSync(credsPath);
+                            const base64Data = Buffer.from(credsData).toString('base64');
 
-    const client = await pool.connect();
-    try {
-        // Store session in PostgreSQL
-        await client.query(
-            'INSERT INTO sessions (session_id, base64_creds) VALUES ($1, $2)',
-            [sessionID, base64Data]
-        );
-        console.log(`Session ${sessionID} stored in PostgreSQL.`);
-    } catch (dbError) {
-        console.error('Error saving to PostgreSQL:', dbError);
-        if (!res.headersSent) {
-            res.status(500).json({ error: 'Unable to store session in the database, please try again.' });
-        }
-    } finally {
-        client.release();
-    }
+                            // Store session in PostgreSQL
+                            const client = await pool.connect();
+                            try {
+                                await client.query(
+                                    'INSERT INTO sessions (session_id, base64_creds) VALUES ($1, $2)',
+                                    [sessionID, base64Data]
+                                );
+                                console.log(`Session ${sessionID} stored in PostgreSQL.`);
+                            } catch (dbError) {
+                                console.error('Error saving to PostgreSQL:', dbError);
+                                if (!res.headersSent) {
+                                    res.status(500).json({ error: 'Unable to store session in the database, please try again.' });
+                                }
+                            } finally {
+                                client.release();
+                            }
 
-                            // Cleanup
+                            // Cleanup previous session if exists (remove old temp folder)
                             await fs.promises.rm(`temp/${sessionID}`, { recursive: true, force: true });
                             await sock.sendMessage(sock.user.id, { text: `Session created successfully! ID: ${sessionID}` });
                             await sock.ws.close();
