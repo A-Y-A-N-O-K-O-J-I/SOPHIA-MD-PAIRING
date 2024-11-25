@@ -28,3 +28,4 @@ async function createSessionsTable() {
 
 // Automatically run the function when this script is executed
 createSessionsTable();
+module.exports = { createSessionsTable }
