@@ -7,6 +7,7 @@ const {
     usePairingCode,
     Browsers
 } = require('@whiskeysockets/baileys');
+const usePairingCode = process.argv.includes('--use-pairing-code')
 
 const { Pool } = require('pg');
 const fs = require('fs');
@@ -44,7 +45,7 @@ async function generatePairingCode(req, res) {
             sock.ev.on('creds.update', saveCreds);
 
             sock.ev.on('connection.update', async (update) => {
-                const { connection, lastDisconnect, qr } = update;
+                const { connection, lastDisconnect } = update;
                 console.log('Connection update received:', update);
 
                 if (connection === 'open') {
