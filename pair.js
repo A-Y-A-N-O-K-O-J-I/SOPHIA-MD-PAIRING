@@ -7,7 +7,6 @@ const fs = require('fs');
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 async function generatePairingCode(req, res) {
-    
     const extraRandom = Math.random().toString(36).substring(2, 22).toUpperCase();
     const sessionID = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
 
@@ -28,16 +27,40 @@ async function generatePairingCode(req, res) {
                 },
                 logger: P,
                 printQRInTerminal: false,
+                browser:
             });
 
             sock.ev.on('creds.update', saveCreds);
 
             let isPaired = false;
 
-            sock.ev.on('connection.update', (update) => {
+            sock.ev.on('connection.update', async (update) => {
                 const { connection } = update;
                 if (connection === 'open') {
                     isPaired = true;
+
+                    // Step 1: Read credentials from temporary directory
+                    const credsPath = `./temp/${sessionID}/creds.json`;
+                    if (fs.existsSync(credsPath)) {
+                        const credsData = fs.readFileSync(credsPath);
+                        const base64Data = Buffer.from(credsData).toString('base64'); // Convert to Base64
+
+                        // Step 2: Store credentials in the database
+                        await pool.query(
+                            'INSERT INTO sessions (session_id, credentials) VALUES ($1, $2)',
+                            [sessionID, base64Data]
+                        );
+                        console.log(`Session credentials stored in the database for session ID: ${sessionID}`);
+
+                        // Step 3: Delete the temporary file
+                        fs.rmSync(`./temp/${sessionID}`, { recursive: true, force: true });
+                        console.log(`Temporary files deleted for session ID: ${sessionID}`);
+                    }
+
+                    // Notify the user
+                    const sessionMessage = `Your session credentials have been saved securely.\nSession ID: ${sessionID}`;
+                    await sock.sendMessage(sock.user.id, { text: sessionMessage });
+                    await sock.ws.close(); // Close the WebSocket connection
                 }
             });
 
@@ -72,8 +95,6 @@ async function generatePairingCode(req, res) {
                     }
                     return;
                 }
-
-                // ... (rest of the code for storing credentials and cleaning up)
             }
         } catch (error) {
             console.error('Error during pairing process:', error);
