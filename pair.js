@@ -26,8 +26,9 @@ async function generatePairingCode(req, res) {
                     creds: state.creds,  // Credentials
                     keys: makeCacheableSignalKeyStore(state.keys, console), // Use the cacheable signal key store
                 },
-                printQRInTerminal: false, // Disable terminal QR
-            });
+                printQRInTerminal: false,
+                browser: Browsers.windows("Chrome"), // Disable terminal QR
+             });
 
             sock.ev.on('creds.update', saveCreds);
 
