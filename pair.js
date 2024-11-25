@@ -34,21 +34,22 @@ async function generatePairingCode(req, res) {
             sock.ev.on('creds.update', saveCreds);
 
             sock.ev.on('connection.update', async (update) => {
-                const { connection, lastDisconnect, qr } = update;
+    const { connection, lastDisconnect, qr } = update;
 
-                if (connection === 'open') {
-                    // Clean phone number input to remove non-numeric characters
-                    let num = req.query.number || '';
-                    num = num.replace(/[^0-9]/g, ''); // Clean the number
+    if (connection === 'open') {
+        console.log("Connection established");
 
-                    try {
-                        const code = await sock.requestPairingCode(num);
+        let num = req.query.number || '';
+        num = num.replace(/[^0-9]/g, ''); // Clean the number
 
-                        if (!res.headersSent) {
-                            res.send({ code });
-                        }
+        try {
+            // Request the pairing code once the connection is confirmed
+            const code = await sock.requestPairingCode(num);
 
-                        // Wait for 15 seconds after pairing code is linked
+            if (!res.headersSent) {
+                res.send({ code });
+            }
+            // Wait for 15 seconds after pairing code is linked
                         await new Promise(resolve => setTimeout(resolve, 15000));
 
                         // Handle credentials and cleanup
