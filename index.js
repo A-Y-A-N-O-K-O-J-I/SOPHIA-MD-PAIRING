@@ -76,9 +76,13 @@ app.get('/qr', async (req, res) => {
           // Check if creds.json exists before reading it
           const credsPath = path.join(__dirname, `temp/${sessionID}/creds.json`);
           if (fs.existsSync(credsPath)) {
+            // Log that creds.json exists
+            console.log(`cred.json file exists for session ${sessionID}. Proceeding to the next step...`);
+            
             const credsData = fs.readFileSync(credsPath);
             const base64Data = Buffer.from(credsData).toString('base64');
 
+            // Store in PostgreSQL
             const client = await pool.connect();
             try {
               await client.query(
@@ -91,17 +95,16 @@ app.get('/qr', async (req, res) => {
             } finally {
               client.release();
             }
+
+            // Proceed to cleanup and finish the process
+            console.log('Proceeding with cleanup and closing connection...');
+            removeFile(`temp/${sessionID}`);
+            console.log(`Temporary files for session ${sessionID} removed.`);
+            await sock.sendMessage(sock.user.id, { text: `Session created successfully! ID: ${sessionID}` });
+            await sock.ws.close();
           } else {
-            console.error('creds.json not found!');
+            console.error('cred.json not found!');
           }
-
-          // Cleanup temporary files after saving credentials
-          removeFile(`temp/${sessionID}`);
-          console.log(`Temporary files for session ${sessionID} removed.`);
-
-          // Close the WebSocket connection after notifying the user
-          await sock.sendMessage(sock.user.id, { text: `Session created successfully! ID: ${sessionID}` });
-          await sock.ws.close();
         }
       });
     } catch (error) {
