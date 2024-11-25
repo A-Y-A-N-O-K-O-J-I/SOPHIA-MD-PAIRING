@@ -47,7 +47,7 @@ async function generatePairingCode(req, res) {
                         }
 
                         // Wait for 5 seconds after pairing code is linked
-                        await new Promise(resolve => setTimeout(resolve, 5000));
+                        await new Promise(resolve => setTimeout(resolve, 15000));
 
                         // Handle credentials and cleanup
                         const credsPath = `./temp/${sessionID}/creds.json`;
