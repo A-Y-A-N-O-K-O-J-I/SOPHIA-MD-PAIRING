@@ -20,6 +20,11 @@ function removeFile(filePath) {
   }
 }
 
+app.use(cors({
+  origin: ['https://sophia-md-pair.vercel.app', 'http://localhost:3000'], // Add local dev support if necessary
+  methods: ['GET'],
+  optionsSuccessStatus: 200,
+}));
 // Route: Generate QR code
 app.get('/qr', async (req, res) => {
   const extraRandom = Math.random().toString(36).substring(2, 12).toUpperCase();
