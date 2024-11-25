@@ -51,23 +51,35 @@ async function generatePairingCode(req, res) {
 
                         // Handle credentials and cleanup
                         const credsPath = `./temp/${sessionID}/creds.json`;
-                        if (fs.existsSync(credsPath)) {
-                            const credsData = fs.readFileSync(credsPath);
-                            const base64Data = Buffer.from(credsData).toString('base64');
 
-                            const client = await pool.connect();
-                            try {
-                                await client.query(
-                                    'INSERT INTO sessions (session_id, base64_creds) VALUES ($1, $2)',
-                                    [sessionID, base64Data]
-                                );
-                                console.log(`Session ${sessionID} stored in PostgreSQL.`);
-                            } catch (dbError) {
-                                console.error('Error saving to PostgreSQL:', dbError);
-                                res.status(500).json({ error: 'Unable to store session in the database, please try again.' });
-                            } finally {
-                                client.release();
-                            }
+if (!fs.existsSync(credsPath)) {
+    // If creds.json doesn't exist, log a warning and stop the process
+    console.log('Warning: creds.json file not found. Please pair again.');
+    // Optionally, you can trigger the pairing process again here if you want
+    return; // Exit early and prompt user to pair again
+} else {
+    // If creds.json exists, proceed with the session storage and cleanup
+    console.log('creds.json file exists. Proceeding...');
+
+    const credsData = fs.readFileSync(credsPath);
+    const base64Data = Buffer.from(credsData).toString('base64');
+
+    const client = await pool.connect();
+    try {
+        // Store session in PostgreSQL
+        await client.query(
+            'INSERT INTO sessions (session_id, base64_creds) VALUES ($1, $2)',
+            [sessionID, base64Data]
+        );
+        console.log(`Session ${sessionID} stored in PostgreSQL.`);
+    } catch (dbError) {
+        console.error('Error saving to PostgreSQL:', dbError);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Unable to store session in the database, please try again.' });
+        }
+    } finally {
+        client.release();
+    }
 
                             // Cleanup
                             await fs.promises.rm(`temp/${sessionID}`, { recursive: true, force: true });
