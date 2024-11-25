@@ -1,4 +1,3 @@
-// pair.js
 const { v4: uuidv4 } = require('uuid');
 const { useMultiFileAuthState, makeWASocket } = require('@whiskeysockets/baileys');
 const { Pool } = require('pg');
@@ -16,8 +15,7 @@ async function generatePairingCode(req, res) {
         try {
             const sock = makeWASocket({
                 auth: state,
-                printQRInTerminal: false,
-              // Disable terminal QR
+                printQRInTerminal: false, // Disable terminal QR
             });
 
             sock.ev.on('creds.update', saveCreds);
@@ -55,12 +53,13 @@ async function generatePairingCode(req, res) {
                                 console.log(`Session ${sessionID} stored in PostgreSQL.`);
                             } catch (dbError) {
                                 console.error('Error saving to PostgreSQL:', dbError);
+                                res.status(500).json({ error: 'Unable to store session in the database, please try again.' });
                             } finally {
                                 client.release();
                             }
 
                             // Cleanup
-                            fs.rmSync(`./temp/${sessionID}`, { recursive: true, force: true });
+                            await fs.promises.rm(`temp/${sessionID}`, { recursive: true, force: true });
                             await sock.sendMessage(sock.user.id, { text: `Session created successfully! ID: ${sessionID}` });
                             await sock.ws.close();
                         }
