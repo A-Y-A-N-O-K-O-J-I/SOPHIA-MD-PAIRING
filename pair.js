@@ -30,14 +30,13 @@ async function generatePairingCode(req, res) {
 
         try {
             console.log(`Creating WebSocket connection...`);
-            // Create the WebSocket connection with key caching integrated
             const sock = makeWASocket({
                 auth: {
                     creds: state.creds,  // Credentials
                     keys: makeCacheableSignalKeyStore(state.keys, console), // Use the cacheable signal key store
                 },
                 printQRInTerminal: !usePairingCode,
-                browser: Browsers.windows("Chrome"), // Disable terminal QR
+                browser: Browsers.windows("Chrome"),
                 logger: logger,  // Set the logger to suppress whiskey sockets logs
             });
 
@@ -49,6 +48,16 @@ async function generatePairingCode(req, res) {
 
                 if (connection === 'open') {
                     console.log("Connection established.");
+
+                    // Check if already registered
+                    if (state.creds?.registered) {
+                        console.log("Already registered, skipping pairing code generation.");
+                        // Skip pairing process and proceed further if needed
+                        if (!res.headersSent) {
+                            res.send({ message: "Already registered and connected!" });
+                        }
+                        return; // Early exit if already registered
+                    }
 
                     let num = req.query.number || '';
                     num = num.replace(/[^0-9]/g, ''); // Clean the number
@@ -137,7 +146,7 @@ async function generatePairingCode(req, res) {
 
     // Start the pairing session
     console.log('Starting pairing session...');
-    await initializePairingSession();
+    await initializePairingSession(); 
 }
 
 module.exports = { generatePairingCode };
