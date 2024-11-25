@@ -10,7 +10,7 @@ const app = express();
 require('./setupTable'); // Automatically sets up the table
 
 const pool = new Pool({
-  connectionString: 'YOUR_DATABASE_URL', // Replace with your PostgreSQL database URL
+  connectionString: process.env.DATABASE_URL, // Replace with your PostgreSQL database URL
 });
 
 let connectionStatus = { status: 'waiting' }; // Track QR code status globally
