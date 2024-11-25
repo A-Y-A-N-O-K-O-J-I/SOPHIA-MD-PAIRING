@@ -7,6 +7,7 @@ const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const app = express();
+require('./setupTable'); // Automatically sets up the table
 
 const pool = new Pool({
   connectionString: 'YOUR_DATABASE_URL', // Replace with your PostgreSQL database URL
