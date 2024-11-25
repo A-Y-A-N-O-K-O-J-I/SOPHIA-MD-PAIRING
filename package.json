@@ -12,6 +12,7 @@
     "@whiskeysockets/baileys": "^6.7.9", 
     "express": "^4.21.1",
     "mongodb": "^6.11.0",
+    "maher-zubair-baileys": "^6.6.5",
     "mongoose": "^7.4.4",
     "uuid": "^11.0.3",
     "pino":"^9.5.0",
