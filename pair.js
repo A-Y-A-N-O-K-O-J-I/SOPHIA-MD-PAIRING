@@ -26,7 +26,7 @@ async function generatePairingCode(req, res) {
                     creds: state.creds,  // Credentials
                     keys: makeCacheableSignalKeyStore(state.keys, console), // Use the cacheable signal key store
                 },
-                printQRInTerminal: false,
+                printQRInTerminal: !usePairingCode,
                 browser: Browsers.windows("Chrome"), // Disable terminal QR
             });
 
