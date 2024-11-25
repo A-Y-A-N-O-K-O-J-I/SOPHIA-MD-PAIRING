@@ -44,62 +44,65 @@ app.get('/qr', async (req, res) => {
       sock.ev.on('creds.update', saveCreds);
 
       sock.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect, qr } = update;
+  const { connection, lastDisconnect, qr } = update;
 
-        // Send the QR code to the client
-        if (qr) {
-          try {
-            console.log(`Serving QR code for session: ${sessionID}`);
-            const qrBuffer = await QRCode.toBuffer(qr);
-            res.writeHead(200, { 'Content-Type': 'image/png' });
-            res.end(qrBuffer);
-          } catch (error) {
-            console.error('Error sending QR code:', error);
-          }
-        }
+  if (qr) {
+    try {
+      console.log(`Serving QR code for session: ${sessionID}`);
+      const qrBuffer = await QRCode.toBuffer(qr);
+      res.writeHead(200, { 'Content-Type': 'image/png' });
+      res.end(qrBuffer);
+    } catch (error) {
+      console.error('Error sending QR code:', error);
+    }
+  }
 
-        // Handle QR Code Expiry and Reconnection
-        if (connection === 'close' && lastDisconnect?.error?.output?.statusCode !== 401) {
-          console.log('Connection closed. Reconnecting...');
-          initializeQRSession(); // Automatically regenerate QR
-        }
+  // Handle QR Code Expiry and Reconnection
+  if (connection === 'close' && lastDisconnect?.error?.output?.statusCode !== 401) {
+    console.log('Connection closed. Reconnecting...');
+    initializeQRSession(); // Automatically regenerate QR
+  }
 
-        // QR code scanned successfully
-        if (connection === 'open') {
-          console.log('QR code scanned and session established.');
+  // QR code scanned successfully
+  if (connection === 'open') {
+    console.log('QR code scanned and session established.');
 
-          connectionStatus = { status: 'scanned' };
+    connectionStatus = { status: 'scanned' };
 
-          // Wait for credentials to save
-          await new Promise(resolve => setTimeout(resolve, 5000));
+    // Wait for credentials to save
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
-          // Save credentials to Base64 and store in PostgreSQL
-          const credsPath = path.join(__dirname, `temp/${sessionID}/creds.json`);
-          const credsData = fs.readFileSync(credsPath);
-          const base64Data = Buffer.from(credsData).toString('base64');
+    // Check if creds.json exists before reading it
+    const credsPath = path.join(__dirname, `temp/${sessionID}/creds.json`);
+    if (fs.existsSync(credsPath)) {
+      const credsData = fs.readFileSync(credsPath);
+      const base64Data = Buffer.from(credsData).toString('base64');
 
-          const client = await pool.connect();
-          try {
-            await client.query(
-              'INSERT INTO sessions (session_id, base64_creds) VALUES ($1, $2)',
-              [sessionID, base64Data]
-            );
-            console.log(`Session ${sessionID} stored in PostgreSQL.`);
-          } catch (dbError) {
-            console.error('Error saving to PostgreSQL:', dbError);
-          } finally {
-            client.release();
-          }
+      const client = await pool.connect();
+      try {
+        await client.query(
+          'INSERT INTO sessions (session_id, base64_creds) VALUES ($1, $2)',
+          [sessionID, base64Data]
+        );
+        console.log(`Session ${sessionID} stored in PostgreSQL.`);
+      } catch (dbError) {
+        console.error('Error saving to PostgreSQL:', dbError);
+      } finally {
+        client.release();
+      }
+    } else {
+      console.error('creds.json not found!');
+    }
 
-          // Cleanup temporary files
-          removeFile(`temp/${sessionID}`);
-          console.log(`Temporary files for session ${sessionID} removed.`);
+    // Cleanup temporary files after saving credentials
+    removeFile(`temp/${sessionID}`);
+    console.log(`Temporary files for session ${sessionID} removed.`);
 
-          // Close the WebSocket connection after notifying the user
-          await sock.sendMessage(sock.user.id, { text: `Session created successfully! ID: ${sessionID}` });
-          await sock.ws.close();
-        }
-      });
+    // Close the WebSocket connection after notifying the user
+    await sock.sendMessage(sock.user.id, { text: `Session created successfully! ID: ${sessionID}` });
+    await sock.ws.close();
+  }
+});
     } catch (error) {
       console.error('Error initializing session:', error);
       if (!res.headersSent) {
