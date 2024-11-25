@@ -27,7 +27,6 @@ async function generatePairingCode(req, res) {
                     keys: makeCacheableSignalKeyStore(state.keys, P),
                 },
                 logger: P,
-                browser: ["Chrome (Linux)", "", ""],
                 printQRInTerminal: false,
             });
 
