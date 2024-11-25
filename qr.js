@@ -1,6 +1,11 @@
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
-const { useMultiFileAuthState, makeWASocket } = require('@whiskeysockets/baileys');
+const makeWASocket = require('@whiskeysockets/baileys').default;
+const {
+    useMultiFileAuthState,
+    delay,
+    Browsers
+} = require('@whiskeysockets/baileys');
 const path = require('path');
 const fs = require('fs');
 const { Pool } = require('pg');
