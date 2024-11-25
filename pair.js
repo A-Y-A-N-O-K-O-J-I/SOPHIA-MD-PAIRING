@@ -4,7 +4,6 @@ const {
     useMultiFileAuthState,
     delay,
     makeCacheableSignalKeyStore,
-    usePairingCode,
     Browsers
 } = require('@whiskeysockets/baileys');
 const usePairingCode = process.argv.includes('--use-pairing-code')
