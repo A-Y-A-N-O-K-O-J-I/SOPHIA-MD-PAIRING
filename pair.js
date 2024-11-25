@@ -1,5 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
-const makeWASocket = require('@whiskeysockets/baileys').default;
+const makeWASocket = require('maher-zubair-baileys').default;
 const { useMultiFileAuthState, delay, makeCacheableSignalKeyStore, Browsers } = require('maher-zubair-baileys');
 const { Pool } = require('pg');
 const fs = require('fs');
@@ -27,7 +27,7 @@ async function generatePairingCode(req, res) {
                 },
                 logger: P,
                 printQRInTerminal: false,
-                browser:
+                browser:["Chrome (Linux)", "", ""]
             });
 
             sock.ev.on('creds.update', saveCreds);
