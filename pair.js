@@ -3,7 +3,7 @@ const makeWASocket = require('@whiskeysockets/baileys').default;
 const { useMultiFileAuthState, makeCacheableSignalKeyStore, Browsers } = require('@whiskeysockets/baileys');
 const { Pool } = require('pg');
 const fs = require('fs');
-
+const pino = require('pino');
 // Set up PostgreSQL connection
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
