@@ -3,6 +3,7 @@ const QRCode = require('qrcode');
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const app = express();
