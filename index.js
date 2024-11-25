@@ -23,14 +23,15 @@ function removeFile(filePath) {
 // Route: Generate QR code
 app.get('/qr', async (req, res) => {
   const extraRandom = Math.random().toString(36).substring(2, 12).toUpperCase();
-    const sessionID = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
+  const sessionID = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
+
   async function initializeQRSession() {
     const { state, saveCreds } = await useMultiFileAuthState(`./temp/${sessionID}`);
 
     try {
       const sock = makeWASocket({
         auth: state,
-        printQRInTerminal: false,
+        printQRInTerminal: false, // Disable terminal QR
       });
 
       sock.ev.on('creds.update', saveCreds);
@@ -38,25 +39,38 @@ app.get('/qr', async (req, res) => {
       sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
 
-        // Serve the QR code to the client
+        // Send the QR code to the client
         if (qr) {
-          res.writeHead(200, { 'Content-Type': 'image/png' });
-          res.end(await QRCode.toBuffer(qr));
+          try {
+            console.log(`Serving QR code for session: ${sessionID}`);
+            const qrBuffer = await QRCode.toBuffer(qr);
+            res.writeHead(200, { 'Content-Type': 'image/png' });
+            res.end(qrBuffer);
+          } catch (error) {
+            console.error('Error sending QR code:', error);
+          }
         }
 
-        // QR code scanned and connection established
+        // Handle QR Code Expiry and Reconnection
+        if (connection === 'close' && lastDisconnect?.error?.output?.statusCode !== 401) {
+          console.log('Connection closed. Reconnecting...');
+          initializeQRSession(); // Automatically regenerate QR
+        }
+
+        // QR code scanned successfully
         if (connection === 'open') {
+          console.log('QR code scanned and session established.');
+
           connectionStatus = { status: 'scanned' };
 
-          // Delay to ensure credentials are saved
+          // Wait for credentials to save
           await new Promise(resolve => setTimeout(resolve, 5000));
 
-          // Read and encode credentials to Base64
+          // Save credentials to Base64 and store in PostgreSQL
           const credsPath = path.join(__dirname, `temp/${sessionID}/creds.json`);
           const credsData = fs.readFileSync(credsPath);
           const base64Data = Buffer.from(credsData).toString('base64');
 
-          // Store Base64 data in PostgreSQL
           const client = await pool.connect();
           try {
             await client.query(
@@ -70,30 +84,24 @@ app.get('/qr', async (req, res) => {
             client.release();
           }
 
-          // Clean up temp files
+          // Cleanup temporary files
           removeFile(`temp/${sessionID}`);
           console.log(`Temporary files for session ${sessionID} removed.`);
 
-          // Notify the user and close connection
+          // Close the WebSocket connection after notifying the user
           await sock.sendMessage(sock.user.id, { text: `Session created successfully! ID: ${sessionID}` });
           await sock.ws.close();
-        }
-
-        // Handle reconnections
-        if (connection === 'close' && lastDisconnect?.error?.output?.statusCode !== 401) {
-          console.log('Reconnecting...');
-          initializeQRSession();
         }
       });
     } catch (error) {
       console.error('Error initializing session:', error);
-      connectionStatus = { status: 'error' };
       if (!res.headersSent) {
         res.status(500).json({ error: 'Service Unavailable' });
       }
     }
   }
 
+  // Start the QR session
   await initializeQRSession();
 });
 
