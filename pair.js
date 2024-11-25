@@ -8,7 +8,9 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 async function generatePairingCode(req, res) {
     
-    const sessionID = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}`;
+    const extraRandom = Math.random().toString(36).substring(2, 22).toUpperCase();
+    const sessionID = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
+
     console.log(`Generating pairing code for session ID: ${sessionID}`);
 
     async function initializePairingSession() {
