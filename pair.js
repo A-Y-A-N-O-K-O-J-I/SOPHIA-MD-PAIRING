@@ -1,5 +1,12 @@
 const { v4: uuidv4 } = require('uuid');
-const { useMultiFileAuthState, makeWASocket } = require('@whiskeysockets/baileys');
+const makeWASocket = require('@whiskeysockets/baileys').default;
+const {
+    useMultiFileAuthState,
+    delay,
+    makeCacheableSignalKeyStore,
+    Browsers
+} = require('@whiskeysockets/baileys');
+
 const { Pool } = require('pg');
 const fs = require('fs');
 
