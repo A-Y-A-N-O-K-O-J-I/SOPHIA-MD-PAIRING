@@ -3,6 +3,7 @@ const QRCode = require('qrcode');
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
 const { default: makeWASocket, useMultiFileAuthState } = require('@whiskysockets/baileys');
 const app = express();
 
@@ -21,8 +22,8 @@ function removeFile(filePath) {
 
 // Route: Generate QR code
 app.get('/qr', async (req, res) => {
-  const sessionID = `SOPHIA_MD-${Math.random().toString(36).slice(2, 10)}`; // Generate unique session ID
-
+  const extraRandom = Math.random().toString(36).substring(2, 12).toUpperCase();
+    const sessionID = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
   async function initializeQRSession() {
     const { state, saveCreds } = await useMultiFileAuthState(`./temp/${sessionID}`);
 
