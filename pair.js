@@ -6,7 +6,8 @@ const {
     useMultiFileAuthState, 
     delay, 
     makeCacheableSignalKeyStore 
-} = require('maher-zubair-baileys');
+} = require('@whiskeysockets/baileys')
+
 const { Pool } = require('pg');
 
 // PostgreSQL connection pool setup
@@ -46,7 +47,7 @@ async function generatePairingCode(req, res) {
                     creds: state.creds,
                     keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
                 },
-                logger: pino({ level: "silent" }),
+                logger: pino({ level: "debug" }),
                 printQRInTerminal: false,
                 browser: ["Chrome (Linux)", "", ""]
             });
