@@ -32,7 +32,7 @@ async function generatePairingCode(req, res) {
                 },
                 logger: pino({ level: "debug" }),
                 printQRInTerminal: false,
-                browser: ["SophiaMD", "1.0", "Linux"] 
+                browser: ["Chrome (Linux)", "", ""]
             });
 
             if (!sock.authState.creds.registered) {
