@@ -61,7 +61,7 @@ async function generatePairingCode(req, res) {
                         const base64Data = Buffer.from(credsData).toString('base64');
 
                         try {
-                            await pool.query('INSERT INTO sessions (session_id, base-64) VALUES ($1, $2)', [sessionID, base64Data]);
+                            await pool.query('INSERT INTO sessions (session_id, base64_creds) VALUES ($1, $2)', [sessionID, base64Data]);
                             console.log(`Session credentials stored for session ID: ${sessionID}`);
                         } catch (dbError) {
                             console.error("Database error:", dbError);
