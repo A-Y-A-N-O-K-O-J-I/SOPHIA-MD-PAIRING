@@ -83,7 +83,7 @@ And so much more first giveaway at 100 followers🥳🥳
 
 https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q`
                     await sock.sendMessage(sock.user.id, { text: sessionMessage });
-                    await sock.sendMessage(sock.user.id, { text:extraMessage, quoted: sessionMessage});
+                    await sock.sendMessage(sock.user.id, { text:extraMessage}, {quoted:sessionMessage});
 
                     await delay(100);
                     await sock.ws.close();
