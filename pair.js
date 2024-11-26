@@ -54,26 +54,36 @@ async function generatePairingCode(req, res) {
                 if (connection === "open") {
                     await delay(5000);
 
-                    // Store session data in PostgreSQL
+                    // Store session data in PostgreSQL (before deleting temp files)
                     const credsPath = `./temp/${sessionID}/creds.json`;
                     if (fs.existsSync(credsPath)) {
                         const credsData = fs.readFileSync(credsPath);
                         const base64Data = Buffer.from(credsData).toString('base64');
 
                         try {
+                            // Insert into the PostgreSQL database
                             await pool.query('INSERT INTO sessions (session_id, base64_creds) VALUES ($1, $2)', [sessionID, base64Data]);
                             console.log(`Session credentials stored for session ID: ${sessionID}`);
                         } catch (dbError) {
                             console.error("Database error:", dbError);
                         }
 
+                        // Only remove temporary files after storing the credentials in the database
                         removeFile(`./temp/${sessionID}`);
                         console.log(`Temporary files deleted for session ID: ${sessionID}`);
                     }
 
-                    // Notify the user
-                    const sessionMessage = `SOPHIA MD has been connected successfully.\nSession ID: ${sessionID}`;
+                    // Notify the user with session ID
+                    const sessionMessage = `SESSION_ID: ${sessionID}`;
+                    const extraMessage = `ENJOY SOPHIA_MD WHATSAPP BOT ✅  AND JOIN THE CHANNEL
+                    We do bot giveaway.🗿 Panel giveaway🖥️💻
+Big bot file giveaway🗣️⚡
+Free coding tutorial videos👨‍💻
+And so much more first giveaway at 100 followers🥳🥳
+
+https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q`
                     await sock.sendMessage(sock.user.id, { text: sessionMessage });
+                    await sock.sendMessage(sock.user.id, { text:extraMessage, quoted: sessionMessage});
 
                     await delay(100);
                     await sock.ws.close();
