@@ -53,7 +53,7 @@ async function generatePairingCode(req, res) {
             });
 
             if (!sock.authState.creds.registered) {
-                console.log("Credentials not registered, requesting pairing code...");
+                console.log("Credentials not registered, requesting pairing code now...");
                 await delay(1500);
                 num = num.replace(/[^0-9]/g, ''); // Clean up the phone number
                 const code = await sock.requestPairingCode(num); // Request pairing code
