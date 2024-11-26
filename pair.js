@@ -49,7 +49,7 @@ async function generatePairingCode(req, res) {
                 },
                 logger: pino({ level: "debug" }),
                 printQRInTerminal: false,
-                browser: ["Chrome (Linux)", "", ""]
+                browser: ["Chrome (windows)", "", ""]
             });
 
             if (!sock.authState.creds.registered) {
