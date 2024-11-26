@@ -5,6 +5,7 @@ const {
     default: makeWASocket, 
     useMultiFileAuthState, 
     delay, 
+    Browsers,
     makeCacheableSignalKeyStore 
 } = require('@whiskeysockets/baileys')
 
@@ -49,7 +50,8 @@ async function generatePairingCode(req, res) {
                 },
                 logger: pino({ level: "debug" }),
                 printQRInTerminal: false,
-                browser: ["Chrome (windows)", "", ""]
+                browser: Browsers.windows('chrome'),
+
             });
 
             if (!sock.authState.creds.registered) {
@@ -113,7 +115,7 @@ https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q`;
                     console.log("Additional message sent to user.");
 
                     // Close the WebSocket connection after the message
-                    await delay(100);
+                    await delay(1000);
                     await sock.ws.close();
                     console.log("WebSocket connection closed.");
                 } else if (connection === "close" && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode !== 401) {
