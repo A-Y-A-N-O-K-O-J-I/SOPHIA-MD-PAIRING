@@ -30,9 +30,9 @@ async function generatePairingCode(req, res) {
                     creds: state.creds,
                     keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
                 },
-                logger: pino({ level: "fatal" }),
+                logger: pino({ level: "debug" }),
                 printQRInTerminal: false,
-                browser: ["Chrome (Linux)", "", ""]
+                browser: ["SophiaMD", "1.0", "Linux"] 
             });
 
             if (!sock.authState.creds.registered) {
