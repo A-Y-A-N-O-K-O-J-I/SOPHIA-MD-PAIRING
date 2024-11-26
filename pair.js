@@ -1,120 +1,97 @@
 const { v4: uuidv4 } = require('uuid');
-const makeWASocket = require('maher-zubair-baileys').default;
-const { useMultiFileAuthState, delay, makeCacheableSignalKeyStore, Browsers } = require('maher-zubair-baileys');
-const { Pool } = require('pg');
 const fs = require('fs');
+const pino = require("pino");
+const { 
+    default: makeWASocket, 
+    useMultiFileAuthState, 
+    delay, 
+    makeCacheableSignalKeyStore 
+} = require('maher-zubair-baileys');
+const { Pool } = require('pg');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+function removeFile(FilePath) {
+    if (!fs.existsSync(FilePath)) return false;
+    fs.rmSync(FilePath, { recursive: true, force: true });
+}
 
 async function generatePairingCode(req, res) {
     const extraRandom = Math.random().toString(36).substring(2, 22).toUpperCase();
     const sessionID = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
-
-    console.log(`Generating pairing code for session ID: ${sessionID}`);
-
-    async function generatePairingCode(req, res) {
-    const extraRandom = Math.random().toString(36).substring(2, 22).toUpperCase();
-    const sessionID = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
-
-    console.log(`Generating pairing code for session ID: ${sessionID}`);
+    let num = req.query.number;
 
     async function initializePairingSession() {
-        console.log(`Initializing pairing session for session ID: ${sessionID}`);
-
         const { state, saveCreds } = await useMultiFileAuthState(`./temp/${sessionID}`);
-        console.log(`Loaded authentication state for session: ${sessionID}`);
 
         try {
-            const P = (await import("pino")).default({ level: "silent" });
             const sock = makeWASocket({
                 auth: {
                     creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, P),
+                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
                 },
-                logger: P,
+                logger: pino({ level: "fatal" }),
                 printQRInTerminal: false,
                 browser: ["Chrome (Linux)", "", ""]
             });
 
+            if (!sock.authState.creds.registered) {
+                await delay(1500);
+                num = num.replace(/[^0-9]/g, '');
+                const code = await sock.requestPairingCode(num);
+
+                if (!res.headersSent) {
+                    res.send({ code });
+                    console.log(`Pairing code sent: ${code}`);
+                }
+            }
+
             sock.ev.on('creds.update', saveCreds);
 
-            let isPaired = false;
+            sock.ev.on("connection.update", async (update) => {
+                const { connection, lastDisconnect } = update;
 
-            sock.ev.on('connection.update', async (update) => {
-                console.log("Connection update:", update);
-                const { connection } = update;
-                if (connection === 'open') {
-                    isPaired = true;
-                    console.log("Connection open, pairing successful.");
+                if (connection === "open") {
+                    await delay(5000);
 
-                    // Step 1: Read credentials from temporary directory
+                    // Store session data in PostgreSQL
                     const credsPath = `./temp/${sessionID}/creds.json`;
                     if (fs.existsSync(credsPath)) {
                         const credsData = fs.readFileSync(credsPath);
                         const base64Data = Buffer.from(credsData).toString('base64');
 
-                        // Step 2: Store credentials in the database
                         try {
-                            await pool.query('INSERT INTO sessions (session_id, credentials) VALUES ($1, $2)', [sessionID, base64Data]);
+                            await pool.query('INSERT INTO sessions (session_id, base-64) VALUES ($1, $2)', [sessionID, base64Data]);
                             console.log(`Session credentials stored for session ID: ${sessionID}`);
                         } catch (dbError) {
                             console.error("Database error:", dbError);
                         }
 
-                        // Step 3: Delete the temporary file
-                        fs.rmSync(`./temp/${sessionID}`, { recursive: true, force: true });
+                        removeFile(`./temp/${sessionID}`);
                         console.log(`Temporary files deleted for session ID: ${sessionID}`);
                     }
 
                     // Notify the user
-                    const sessionMessage = `Your session credentials have been saved securely.\nSession ID: ${sessionID}`;
+                    const sessionMessage = `SOPHIA MD has been connected successfully.\nSession ID: ${sessionID}`;
                     await sock.sendMessage(sock.user.id, { text: sessionMessage });
-                    await sock.ws.close(); // Close the WebSocket connection
+
+                    await delay(100);
+                    await sock.ws.close();
+                } else if (connection === "close" && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode !== 401) {
+                    await delay(10000);
+                    initializePairingSession();
                 }
             });
-
-            if (!sock.authState.creds.registered) {
-                await delay(3000);
-
-                let num = req.query.number || '';
-                num = num.replace(/[^0-9]/g, '');
-                console.log(`Requesting pairing code for number: ${num}`);
-
-                let code = await sock.requestPairingCode(num);
-                code = code?.match(/.{1,4}/g)?.join("-") || code;
-                console.log(`Your Pairing Code: ${code}`);
-
-                if (!res.headersSent) {
-                    res.send({ code });
-                    console.log("Pairing code sent to client.");
-                }
-
-                console.log("Waiting for pairing to complete...");
-                const timeout = 100000;
-                const startTime = Date.now();
-
-                while (!isPaired && Date.now() - startTime < timeout) {
-                    console.log("Waiting for pairing...");
-                    await delay(1000);
-                }
-
-                if (!isPaired) {
-                    console.log('Pairing process timed out.');
-                    if (!res.headersSent) {
-                        res.status(408).json({ error: 'Pairing process timed out. Please try again.' });
-                    }
-                    return;
-                }
-            }
         } catch (error) {
             console.error('Error during pairing process:', error);
+            removeFile(`./temp/${sessionID}`);
             if (!res.headersSent) {
-                res.status(500).json({ error: 'Service Unavailable' });
+                res.send({ code: "Service Unavailable" });
             }
         }
     }
 
     await initializePairingSession();
-        }
+}
 
 module.exports = { generatePairingCode };
