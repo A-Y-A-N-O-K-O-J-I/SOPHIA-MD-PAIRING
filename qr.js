@@ -12,7 +12,12 @@ const fs = require('fs');
 const { Pool } = require('pg');
 
 // Set up PostgreSQL connection
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL || 'your_database_url', // Use your DATABASE_URL here
+    ssl: {
+        rejectUnauthorized: false  // This allows self-signed certificates, adjust as needed
+    }
+});
 
 async function generateQR(req, res) {
     const extraRandom = Math.random().toString(36).substring(2, 12).toUpperCase();
