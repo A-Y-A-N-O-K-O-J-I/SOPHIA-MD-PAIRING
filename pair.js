@@ -143,6 +143,8 @@ function removeFile(filePath) {
         console.log(`File not found: ${filePath}`);
     }
 }
-await removeFile(`./temp/${sessionID}`);
 
+// Call removeFile synchronously (no await needed)
+removeFile(`./temp/${sessionID}`);
+console.log("Temporary session data removed.");
 module.exports = { generatePairingCode };
