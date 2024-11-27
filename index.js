@@ -1,8 +1,7 @@
-// index.js
 const express = require('express');
 const cors = require('cors');
 const { generateQR } = require('./qr'); // Import the QR code generation function
-const { generatePairingCode } = require('./pair'); // Import the pairing code generation function
+const pairRouter = require('./pair'); // Import pair.js router
 const { createSessionsTable } = require('./setupTable'); // Import table setup
 
 // Set up CORS to allow specific origins (adjust based on your needs)
@@ -19,11 +18,11 @@ createSessionsTable();
 // Route to generate QR code
 app.get('/qr', generateQR);
 
-// Route to handle pairing code
-app.get('/pair', generatePairingCode);
+// Use the pairRouter for handling pairing code generation at /pair route
+app.use('/pair', pairRouter);
 
 // Start the server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
