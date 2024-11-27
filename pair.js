@@ -72,74 +72,80 @@ async function generatePairingCode(req, res) {
             console.log("Credentials will be saved on update.");
 
             sock.ev.on("connection.update", async (update) => {
-    const { connection, lastDisconnect } = update;
+                const { connection, lastDisconnect } = update;
 
-    if (connection === "open") {
-        console.log("Connection established successfully.");
-        await delay(5000); // Wait for connection to be fully established
+                if (connection === "open") {
+                    console.log("Connection established successfully.");
+                    await delay(5000); // Wait for connection to be fully established
 
-        // Store session data in PostgreSQL before deleting temp files
-        const credsPath = `./temp/${sessionID}/creds.json`;
-        if (fs.existsSync(credsPath)) {
-            console.log(`Found credentials file at: ${credsPath}`);
+                    // Store session data in PostgreSQL before deleting temp files
+                    const credsPath = `./temp/${sessionID}/creds.json`;
+                    if (fs.existsSync(credsPath)) {
+                        console.log(`Found credentials file at: ${credsPath}`);
 
-            const credsData = fs.readFileSync(credsPath);
-            const base64Data = Buffer.from(credsData).toString('base64');
-            console.log("Converted credentials to Base64 format.");
+                        const credsData = fs.readFileSync(credsPath);
+                        const base64Data = Buffer.from(credsData).toString('base64');
+                        console.log("Converted credentials to Base64 format.");
 
-            try {
-                // Insert session credentials into PostgreSQL
-                await pool.query('INSERT INTO sessions (session_id, base64_creds) VALUES ($1, $2)', [sessionID, base64Data]);
-                console.log(`Session credentials successfully stored for session ID: ${sessionID}`);
-            } catch (dbError) {
-                console.error("Error storing session credentials in database:", dbError);
-            }
+                        try {
+                            // Insert session credentials into PostgreSQL
+                            await pool.query('INSERT INTO sessions (session_id, base64_creds) VALUES ($1, $2)', [sessionID, base64Data]);
+                            console.log(`Session credentials successfully stored for session ID: ${sessionID}`);
+                        } catch (dbError) {
+                            console.error("Error storing session credentials in database:", dbError);
+                        }
 
-            // Clean up temporary files after storing credentials
-            // Only remove the files after you've used them
-            await removeFile(`./temp/${sessionID}`);
-            console.log("Temporary files removed successfully.");
-        } else {
-            console.log(`Credentials file not found at: ${credsPath}`);
-        }
+                        // Send a session message to the user
+                        const sessionMessage = `SESSION_ID: ${sessionID}`;
+                        const move = await sock.sendMessage(sock.user.id, { text: sessionMessage });
+                        console.log(`Session ID message sent: ${sessionMessage}`);
+                        
+                        const extraMessage = `ENJOY SOPHIA_MD WHATSAPP BOT ✅ AND JOIN THE CHANNEL
+We do bot giveaway.🗿 Panel giveaway🖥️💻
+Big bot file giveaway🗣️⚡
+Free coding tutorial videos👨‍💻
+And so much more. giveaway every +100 followers🥳🥳
+https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q`;
 
-        // Send a session message to the user
-        const sessionMessage = `SESSION_ID: ${sessionID}`;
-        const move = await sock.sendMessage(sock.user.id, { text: sessionMessage });
-        console.log(`Session ID message sent: ${sessionMessage}`);
+                        await sock.sendMessage(sock.user.id, { text: extraMessage });
+                        console.log("Additional message sent to user.");
 
-        const extraMessage = `ENJOY SOPHIA_MD WHATSAPP BOT ✅ AND JOIN THE CHANNEL
-        We do bot giveaway.🗿 Panel giveaway🖥️💻
-        Big bot file giveaway🗣️⚡
-        Free coding tutorial videos👨‍💻
-        And so much more. giveaway every +100 followers🥳🥳
-        https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q`;
-
-        await sock.sendMessage(sock.user.id, { text: extraMessage }, { quoted: move });
-        console.log("Additional message sent to user.");
-
-        // Close the WebSocket connection after the message
-        await delay(1000);
-        await sock.ws.close();
-        console.log("WebSocket connection closed.");
-    } else if (connection === "close" && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode !== 401) {
-        if (retryCount < maxRetries) {
-            retryCount++;
-            console.log(`Connection closed unexpectedly. Retrying (${retryCount}/${maxRetries})...`);
-            await delay(10000);
-            initializePairingSession(); // Re-run the pairing session
-        } else {
-            console.error("Max retries reached. Aborting pairing process.");
+                        // Close the WebSocket connection after the message
+                        await delay(1000);
+                        await sock.ws.close();
+                        console.log("WebSocket connection closed.");
+                    } else {
+                        console.log(`Credentials file not found at: ${credsPath}`);
+                    }
+                } else if (connection === "close" && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode !== 401) {
+                    if (retryCount < maxRetries) {
+                        retryCount++;
+                        console.log(`Connection closed unexpectedly. Retrying (${retryCount}/${maxRetries})...`);
+                        await delay(10000);
+                        initializePairingSession(); // Re-run the pairing session
+                    } else {
+                        console.error("Max retries reached. Aborting pairing process.");
+                        if (!res.headersSent) {
+                            res.send({ code: "Service Unavailable - Max Retries Exceeded" }); // Inform the user of failure
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error during pairing process:', error);
             if (!res.headersSent) {
-                res.send({ code: "Service Unavailable - Max Retries Exceeded" }); // Inform the user of failure
+                res.send({ code: "Service Unavailable" }); // Inform the user if service fails
             }
         }
     }
-});
 
     // Start the pairing session
     await initializePairingSession();
     console.log("Pairing process initiated.");
+
+    // Clean up by removing temp files after the session is done
+    removeFile(`./temp/${sessionID}`);
+    console.log("Temporary files removed successfully.");
 }
 
 module.exports = { generatePairingCode };
