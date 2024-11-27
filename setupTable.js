@@ -2,14 +2,15 @@ const { Pool } = require('pg');
 
 // Database connection
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://ayanokoji:03DkFG7L3j62PTPd6SMrtw@floral-newt-3299.jxf.gcp-europe-west1.cockroachlabs.cloud:26257/defaultdb?sslmode=verify-full', // Use your DATABASE_URL here
+  connectionString: process.env.DATABASE_URL || 'your_database_url', // Use your DATABASE_URL here
 });
 
 async function createSessionsTable() {
   const query = `
     CREATE TABLE IF NOT EXISTS sessions (
       session_id TEXT PRIMARY KEY,
-      base64_creds TEXT NOT NULL
+      base64_creds TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Add created_at column
     );
   `;
 
