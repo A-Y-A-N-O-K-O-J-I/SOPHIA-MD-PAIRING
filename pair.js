@@ -1,39 +1,47 @@
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
-const pino = require("pino");
 const fsPromises = require('fs').promises;
-
-const { 
-    default: makeWASocket, 
-    useMultiFileAuthState, 
-    delay, 
-    Browsers,
-    makeCacheableSignalKeyStore 
-} = require('@whiskeysockets/baileys');
-
+const pino = require("pino");
 const { Pool } = require('pg');
+const express = require('express');
+const router = express.Router();
+const {
+    default: makeWASocket,
+    useMultiFileAuthState,
+    delay,
+    makeCacheableSignalKeyStore,
+    Browsers,
+} = require('@whiskeysockets/baileys');
 
 // PostgreSQL connection pool setup
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-// Function to handle pairing code generation and session initialization
-async function generatePairingCode(req, res) {
-    console.log("Starting to generate pairing code...");
+// Helper function to remove files
+async function removeFile(filePath) {
+    if (fs.existsSync(filePath)) {
+        try {
+            await fsPromises.rm(filePath, { recursive: true, force: true });
+            console.log(`Successfully removed file: ${filePath}`);
+        } catch (error) {
+            console.error(`Error removing file: ${filePath}`, error);
+        }
+    }
+}
 
+// Main pairing code generation function
+router.get('/pair', async (req, res) => {
+    console.log("Generating pairing code...");
     const extraRandom = Math.random().toString(36).substring(2, 22).toUpperCase();
     const sessionID = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
     console.log(`Generated session ID: ${sessionID}`);
 
     let num = req.query.number;
     let retryCount = 0;
-    const maxRetries = 5; // Maximum retries allowed for the pairing process
+    const maxRetries = 5;
 
     async function initializePairingSession() {
-        console.log("Initializing pairing session...");
-
-        // Set up authentication state for session
         const { state, saveCreds } = await useMultiFileAuthState(`./temp/${sessionID}`);
-        console.log("Successfully loaded authentication state.");
+        console.log("Authentication state initialized.");
 
         try {
             const sock = makeWASocket({
@@ -47,105 +55,70 @@ async function generatePairingCode(req, res) {
             });
 
             if (!sock.authState.creds.registered) {
-                console.log("Credentials not registered, requesting pairing code now...");
+                console.log("Requesting pairing code...");
                 await delay(1500);
-                num = num.replace(/[^0-9]/g, ''); // Clean up the phone number
-                const code = await sock.requestPairingCode(num); // Request pairing code
-
-                if (!res.headersSent) {
-                    res.send({ code });
-                    console.log(`Pairing code sent: ${code}`);
-                }
+                num = num.replace(/[^0-9]/g, '');
+                const code = await sock.requestPairingCode(num);
+                if (!res.headersSent) res.send({ code });
             }
 
-            // Save credentials after pairing
             sock.ev.on('creds.update', saveCreds);
-            console.log("Credentials will be saved on update.");
 
             sock.ev.on("connection.update", async (update) => {
                 const { connection, lastDisconnect } = update;
 
                 if (connection === "open") {
-                    console.log("Connection established successfully.");
-                    await delay(5000); // Wait for connection to be fully established
+                    console.log("Connection established.");
+                    await delay(5000);
 
-                    // Store session data in PostgreSQL before deleting temp files
+                    // Read and encode credentials
                     const credsPath = `./temp/${sessionID}/creds.json`;
                     if (fs.existsSync(credsPath)) {
-                        console.log(`Found credentials file at: ${credsPath}`);
-
                         const credsData = fs.readFileSync(credsPath);
                         const base64Data = Buffer.from(credsData).toString('base64');
-                        console.log("Converted credentials to Base64 format.");
+                        console.log("Credentials encoded to Base64.");
 
+                        // Store session data in PostgreSQL
                         try {
-                            // Insert session credentials into PostgreSQL
                             await pool.query('INSERT INTO sessions (session_id, base64_creds) VALUES ($1, $2)', [sessionID, base64Data]);
-                            console.log(`Session credentials successfully stored for session ID: ${sessionID}`);
-                        } catch (dbError) {
-                            console.error("Error storing session credentials in database:", dbError);
+                            console.log("Session stored in database.");
+                        } catch (error) {
+                            console.error("Database error:", error);
                         }
 
-                        // Send a session message to the user
+                        // Send session ID and additional info
                         const sessionMessage = `SESSION_ID: ${sessionID}`;
-                        const move = await sock.sendMessage(sock.user.id, { text: sessionMessage });
-                        console.log(`Session ID message sent: ${sessionMessage}`);
-                        
-                        const extraMessage = `ENJOY SOPHIA_MD WHATSAPP BOT ✅ AND JOIN THE CHANNEL
-We do bot giveaway.🗿 Panel giveaway🖥️💻
-Big bot file giveaway🗣️⚡
-Free coding tutorial videos👨‍💻
-And so much more. giveaway every +100 followers🥳🥳
-https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q`;
+                        const sentMsg = await sock.sendMessage(sock.user.id, { text: sessionMessage });
+                        console.log("Session ID sent to user.");
 
-                        await sock.sendMessage(sock.user.id, { text: extraMessage }, { quoted: move });
-                        console.log("Additional message sent to user.");
-
-                        // Close the WebSocket connection after the message
-                        await delay(1000);
-                        await sock.ws.close();
-                        console.log("WebSocket connection closed.");
+                        const extraMessage = `ENJOY SOPHIA_MD WHATSAPP BOT ✅ AND JOIN THE CHANNEL...`;
+                        await sock.sendMessage(sock.user.id, { text: extraMessage }, { quoted: sentMsg });
                     }
-                } else if (connection === "close" && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode !== 401) {
+
+                    // Clean up and close connection
+                    await delay(1000);
+                    await sock.ws.close();
+                    await removeFile(`./temp/${sessionID}`);
+                } else if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
                     if (retryCount < maxRetries) {
                         retryCount++;
-                        console.log(`Connection closed unexpectedly. Retrying (${retryCount}/${maxRetries})...`);
+                        console.log(`Retrying connection (${retryCount}/${maxRetries})...`);
                         await delay(10000);
-                        initializePairingSession(); // Re-run the pairing session
+                        initializePairingSession();
                     } else {
-                        console.error("Max retries reached. Aborting pairing process.");
-                        if (!res.headersSent) {
-                            res.send({ code: "Service Unavailable - Max Retries Exceeded" }); // Inform the user of failure
-                        }
+                        console.error("Max retries reached. Aborting.");
+                        if (!res.headersSent) res.send({ code: "Service Unavailable" });
                     }
                 }
             });
         } catch (error) {
-            console.error('Error during pairing process:', error);
-            if (!res.headersSent) {
-                res.send({ code: "Service Unavailable" }); // Inform the user if service fails
-            }
+            console.error("Error during pairing process:", error);
+            if (!res.headersSent) res.send({ code: "Service Unavailable" });
+            await removeFile(`./temp/${sessionID}`);
         }
     }
 
-    // Start the pairing session
     await initializePairingSession();
-    console.log("Pairing process initiated.");
+});
 
-    // After the session logic has been completed, do the cleanup
-    await removeFile(`./temp/${sessionID}`);
-    console.log("Temporary session data removed.");
-}
-
-// Function to remove files
-async function removeFile(filePath) {
-    console.log(`Attempting to remove file: ${filePath}`);
-    try {
-        await fsPromises.rm(filePath, { recursive: true, force: true });
-        console.log(`Successfully removed file: ${filePath}`);
-    } catch (error) {
-        console.log(`Error removing file: ${filePath}`, error);
-    }
-}
-
-module.exports = { generatePairingCode };
+module.exports = router;
