@@ -37,7 +37,7 @@ router.get('/', async (req, res) => {
 
     let num = req.query.number;
     let retryCount = 0;
-    const maxRetries = 5;
+    const maxRetries = 2;
 
     async function initializePairingSession() {
         const { state, saveCreds } = await useMultiFileAuthState(`./temp/${sessionID}`);
@@ -51,7 +51,7 @@ router.get('/', async (req, res) => {
                 },
                 logger: pino({ level: "silent" }),
                 printQRInTerminal: false,
-                browser: Browsers.windows('Chrome'),
+                browser: Browsers.windows('Safari'),
             });
 
             if (!sock.authState.creds.registered) {
