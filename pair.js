@@ -80,8 +80,12 @@ router.get('/', async (req, res) => {
 
                         // Store session data in PostgreSQL
                         try {
-                            await pool.query('INSERT INTO sessions (session_id, base64_creds) VALUES ($1, $2)', [sessionID, base64Data]);
-                            console.log("Session stored in database.");
+                            // Inside the function where session is stored in the database (e.g., inside pair.js or qr.js)
+await pool.query(
+  'INSERT INTO sessions (session_id, base64_creds, created_at) VALUES ($1, $2, CURRENT_TIMESTAMP)', 
+  [sessionID, base64Data]
+);
+console.log("Session stored in database with timestamp.");
                         } catch (error) {
                             console.error("Database error:", error);
                         }
