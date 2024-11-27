@@ -94,7 +94,7 @@ async function generatePairingCode(req, res) {
                         }
 
                         // Clean up temporary files after storing credentials
-                        removeFile(`./temp/${sessionID}`);
+                        
                     } else {
                         console.log(`Credentials file not found at: ${credsPath}`);
                     }
@@ -118,6 +118,8 @@ https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q`;
                     await delay(1000);
                     await sock.ws.close();
                     console.log("WebSocket connection closed.");
+                  await  removeFile(`./temp/${sessionID}`);
+                    console.log("successfully removed file");
                 } else if (connection === "close" && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode !== 401) {
                     console.log("Connection closed unexpectedly, retrying pairing...");
                     await delay(10000);
