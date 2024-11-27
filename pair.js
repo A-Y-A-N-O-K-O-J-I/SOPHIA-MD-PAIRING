@@ -14,16 +14,8 @@ const { Pool } = require('pg');
 // PostgreSQL connection pool setup
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-// Helper function to remove files safely
-function removeFile(filePath) {
-    console.log(`Attempting to remove file: ${filePath}`);
-    if (fs.existsSync(filePath)) {
-        fs.rmSync(filePath, { recursive: true, force: true });
-        console.log(`Successfully removed file: ${filePath}`);
-    } else {
-        console.log(`File not found: ${filePath}`);
-    }
-}
+
+
 
 // Function to handle pairing code generation and session initialization
 async function generatePairingCode(req, res) {
@@ -94,13 +86,7 @@ async function generatePairingCode(req, res) {
                         } catch (dbError) {
                             console.error("Error storing session credentials in database:", dbError);
                         }
-
-                        // Clean up temporary files after storing credentials
-                        await removeFile(`./temp/${sessionID}`);
-                        console.log("Temporary files removed successfully.");
-                    } else {
-                        console.log(`Credentials file not found at: ${credsPath}`);
-                    }
+                   
 
                     // Send a session message to the user
                     const sessionMessage = `SESSION_ID: ${sessionID}`;
@@ -146,6 +132,17 @@ https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q`;
     // Start the pairing session
     await initializePairingSession();
     console.log("Pairing process initiated.");
+    
 }
+function removeFile(filePath) {
+    console.log(`Attempting to remove file: ${filePath}`);
+    if (fs.existsSync(filePath)) {
+        fs.rmSync(filePath, { recursive: true, force: true });
+        console.log(`Successfully removed file: ${filePath}`);
+    } else {
+        console.log(`File not found: ${filePath}`);
+    }
+}
+await removeFile(`./temp/${sessionID}`);
 
 module.exports = { generatePairingCode };
