@@ -43,7 +43,7 @@ async function generatePairingCode(req, res) {
                 },
                 logger: pino({ level: "silent" }),
                 printQRInTerminal: false,
-                browser: Browsers.windows('Safari'),
+                browser: Browsers.windows('Chrome'),
             });
 
             if (!sock.authState.creds.registered) {
