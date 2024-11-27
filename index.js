@@ -3,7 +3,7 @@ const cors = require('cors');
 const { generateQR } = require('./qr'); // Import the QR code generation function
 const pairRouter = require('./pair'); // Import pair.js router
 const { createSessionsTable } = require('./setupTable'); // Import table setup
-
+require('./cleanup'); // Import the cleanup script to run the scheduled task
 // Set up CORS to allow specific origins (adjust based on your needs)
 const app = express();
 app.use(cors({
