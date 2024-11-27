@@ -48,9 +48,9 @@ async function generatePairingCode(req, res) {
                     creds: state.creds,
                     keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
                 },
-                logger: pino({ level: "debug" }),
+                logger: pino({ level: "silent" }),
                 printQRInTerminal: false,
-                browser: Browsers.windows('chrome'),
+                browser: Browsers.windows('UCbrowser'),
 
             });
 
