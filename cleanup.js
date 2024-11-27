@@ -3,9 +3,11 @@ const { Pool } = require('pg');
 
 // Set up PostgreSQL connection
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'your_database_url',
+    connectionString: process.env.DATABASE_URL || 'your_database_url', // Use your DATABASE_URL here
+    ssl: {
+        rejectUnauthorized: false  // This allows self-signed certificates, adjust as needed
+    }
 });
-
 // Function to delete sessions older than 24 hours
 async function deleteOldSessions() {
     try {
