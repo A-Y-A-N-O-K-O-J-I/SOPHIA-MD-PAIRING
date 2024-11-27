@@ -80,27 +80,27 @@ async function generatePairingCode(req, res) {
 
                     // Store session data in PostgreSQL before deleting temp files
                     const credsPath = `./temp/${sessionID}/creds.json`;
-                    if (fs.existsSync(credsPath)) {
-                        console.log(`Found credentials file at: ${credsPath}`);
+if (fs.existsSync(credsPath)) {
+    console.log(`Found credentials file at: ${credsPath}`);
 
-                        const credsData = fs.readFileSync(credsPath);
-                        const base64Data = Buffer.from(credsData).toString('base64');
-                        console.log("Converted credentials to Base64 format.");
+    const credsData = fs.readFileSync(credsPath);
+    const base64Data = Buffer.from(credsData).toString('base64');
+    console.log("Converted credentials to Base64 format.");
 
-                        try {
-                            // Insert session credentials into PostgreSQL
-                            await pool.query('INSERT INTO sessions (session_id, base64_creds) VALUES ($1, $2)', [sessionID, base64Data]);
-                            console.log(`Session credentials successfully stored for session ID: ${sessionID}`);
-                        } catch (dbError) {
-                            console.error("Error storing session credentials in database:", dbError);
-                        }
+    try {
+        // Insert session credentials into PostgreSQL
+        await pool.query('INSERT INTO sessions (session_id, base64_creds) VALUES ($1, $2)', [sessionID, base64Data]);
+        console.log(`Session credentials successfully stored for session ID: ${sessionID}`);
+    } catch (dbError) {
+        console.error("Error storing session credentials in database:", dbError);
+    }
 
-                        // Clean up temporary files after storing credentials
-                        await removeFile(`./temp/${sessionID}`);
-                        console.log("Temporary files removed successfully.");
-                    } else {
-                        console.log(`Credentials file not found at: ${credsPath}`);
-                    }
+    // Clean up temporary files after storing credentials
+    await removeFile(`./temp/${sessionID}`);
+    console.log("Temporary files removed successfully.");
+} else {
+    console.log(`Credentials file not found at: ${credsPath}`);
+}
 
                     // Send a session message to the user
                     const sessionMessage = `SESSION_ID: ${sessionID}`;
