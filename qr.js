@@ -56,11 +56,12 @@ async function generateQR(req, res) {
                         // Store in PostgreSQL
                         const client = await pool.connect();
                         try {
-                            await client.query(
-                                'INSERT INTO sessions (session_id, base64_creds) VALUES ($1, $2)',
-                                [sessionID, base64Data]
-                            );
-                            console.log(`Session ${sessionID} stored in PostgreSQL.`);
+                            // Inside the function where session is stored in the database (e.g., inside pair.js or qr.js)
+await client.query(
+  'INSERT INTO sessions (session_id, base64_creds, created_at) VALUES ($1, $2, CURRENT_TIMESTAMP)', 
+  [sessionID, base64Data]
+);
+console.log("Session stored in database with timestamp.");
                         } catch (dbError) {
                             console.error('Error saving to PostgreSQL:', dbError);
                             res.status(500).json({ error: 'Unable to store session in the database, please try again.' });
