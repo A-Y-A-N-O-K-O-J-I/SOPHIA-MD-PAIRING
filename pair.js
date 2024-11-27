@@ -29,7 +29,7 @@ async function removeFile(filePath) {
 }
 
 // Main pairing code generation function
-router.get('/pair', async (req, res) => {
+router.get('/', async (req, res) => {
     console.log("Generating pairing code...");
     const extraRandom = Math.random().toString(36).substring(2, 22).toUpperCase();
     const sessionID = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
