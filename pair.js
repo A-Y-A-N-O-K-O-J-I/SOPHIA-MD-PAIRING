@@ -126,7 +126,7 @@ https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q`;
             });
         } catch (error) {
             console.error('Error during pairing process:', error);
-            removeFile(`./temp/${sessionID}`); // Clean up if any error occurs
+             // Clean up if any error occurs
             if (!res.headersSent) {
                 res.send({ code: "Service Unavailable" }); // Inform the user if service fails
             }
