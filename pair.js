@@ -102,15 +102,16 @@ async function generatePairingCode(req, res) {
 
                     // Send a session message to the user
                     const sessionMessage = `SESSION_ID: ${sessionID}`;
-                    const extraMessage = `ENJOY SOPHIA_MD WHATSAPP BOT ✅ AND JOIN THE CHANNEL
+                    
+                    const move = await sock.sendMessage(sock.user.id, { text: sessionMessage });
+                    console.log(`Session ID message sent: ${sessionMessage}`);
+                    let extraMessage = `ENJOY SOPHIA_MD WHATSAPP BOT ✅ AND JOIN THE CHANNEL
 We do bot giveaway.🗿 Panel giveaway🖥️💻
 Big bot file giveaway🗣️⚡
 Free coding tutorial videos👨‍💻
-And so much more. First giveaway at 100 followers🥳🥳
+And so much more. giveaway every +100 followers🥳🥳
 https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q`;
-
-                    const move = await sock.sendMessage(sock.user.id, { text: sessionMessage });
-                    console.log(`Session ID message sent: ${sessionMessage}`);
+                    
                     await sock.sendMessage(sock.user.id, { text: extraMessage }, { quoted: move });
                     console.log("Additional message sent to user.");
 
