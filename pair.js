@@ -51,7 +51,6 @@ async function generatePairingCode(req, res) {
                 logger: pino({ level: "silent" }),
                 printQRInTerminal: false,
                 browser: Browsers.windows('Safari'),
-
             });
 
             if (!sock.authState.creds.registered) {
@@ -137,6 +136,7 @@ https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q`;
     // Start the pairing session
     await initializePairingSession();
     console.log("Pairing process initiated.");
+                            }
 }
 
 module.exports = { generatePairingCode };
