@@ -136,7 +136,6 @@ https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q`;
     // Start the pairing session
     await initializePairingSession();
     console.log("Pairing process initiated.");
-                            }
 }
 
 module.exports = { generatePairingCode };
