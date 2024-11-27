@@ -16,9 +16,6 @@ const { Pool } = require('pg');
 // PostgreSQL connection pool setup
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-
-
-
 // Function to handle pairing code generation and session initialization
 async function generatePairingCode(req, res) {
     console.log("Starting to generate pairing code...");
@@ -88,27 +85,27 @@ async function generatePairingCode(req, res) {
                         } catch (dbError) {
                             console.error("Error storing session credentials in database:", dbError);
                         }
-                   
 
-                    // Send a session message to the user
-                    const sessionMessage = `SESSION_ID: ${sessionID}`;
-                    const move = await sock.sendMessage(sock.user.id, { text: sessionMessage });
-                    console.log(`Session ID message sent: ${sessionMessage}`);
-                    
-                    const extraMessage = `ENJOY SOPHIA_MD WHATSAPP BOT ✅ AND JOIN THE CHANNEL
+                        // Send a session message to the user
+                        const sessionMessage = `SESSION_ID: ${sessionID}`;
+                        const move = await sock.sendMessage(sock.user.id, { text: sessionMessage });
+                        console.log(`Session ID message sent: ${sessionMessage}`);
+                        
+                        const extraMessage = `ENJOY SOPHIA_MD WHATSAPP BOT ✅ AND JOIN THE CHANNEL
 We do bot giveaway.🗿 Panel giveaway🖥️💻
 Big bot file giveaway🗣️⚡
 Free coding tutorial videos👨‍💻
 And so much more. giveaway every +100 followers🥳🥳
 https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q`;
 
-                    await sock.sendMessage(sock.user.id, { text: extraMessage }, { quoted: move });
-                    console.log("Additional message sent to user.");
+                        await sock.sendMessage(sock.user.id, { text: extraMessage }, { quoted: move });
+                        console.log("Additional message sent to user.");
 
-                    // Close the WebSocket connection after the message
-                    await delay(1000);
-                    await sock.ws.close();
-                    console.log("WebSocket connection closed.");
+                        // Close the WebSocket connection after the message
+                        await delay(1000);
+                        await sock.ws.close();
+                        console.log("WebSocket connection closed.");
+                    }
                 } else if (connection === "close" && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode !== 401) {
                     if (retryCount < maxRetries) {
                         retryCount++;
@@ -134,9 +131,8 @@ https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q`;
     // Start the pairing session
     await initializePairingSession();
     console.log("Pairing process initiated.");
-    
-}
-// After the session logic has been completed, do the cleanup
+
+    // After the session logic has been completed, do the cleanup
     await removeFile(`./temp/${sessionID}`);
     console.log("Temporary session data removed.");
 }
@@ -151,4 +147,5 @@ async function removeFile(filePath) {
         console.log(`Error removing file: ${filePath}`, error);
     }
 }
+
 module.exports = { generatePairingCode };
