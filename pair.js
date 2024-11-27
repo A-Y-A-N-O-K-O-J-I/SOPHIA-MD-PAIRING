@@ -1,6 +1,8 @@
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const pino = require("pino");
+const fsPromises = require('fs').promises;
+
 const { 
     default: makeWASocket, 
     useMultiFileAuthState, 
@@ -134,17 +136,19 @@ https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q`;
     console.log("Pairing process initiated.");
     
 }
-function removeFile(filePath) {
-    console.log(`Attempting to remove file: ${filePath}`);
-    if (fs.existsSync(filePath)) {
-        fs.rmSync(filePath, { recursive: true, force: true });
-        console.log(`Successfully removed file: ${filePath}`);
-    } else {
-        console.log(`File not found: ${filePath}`);
-    }
+// After the session logic has been completed, do the cleanup
+    await removeFile(`./temp/${sessionID}`);
+    console.log("Temporary session data removed.");
 }
 
-// Call removeFile synchronously (no await needed)
-removeFile(`./temp/${sessionID}`);
-console.log("Temporary session data removed.");
+// Function to remove files
+async function removeFile(filePath) {
+    console.log(`Attempting to remove file: ${filePath}`);
+    try {
+        await fsPromises.rm(filePath, { recursive: true, force: true });
+        console.log(`Successfully removed file: ${filePath}`);
+    } catch (error) {
+        console.log(`Error removing file: ${filePath}`, error);
+    }
+}
 module.exports = { generatePairingCode };
