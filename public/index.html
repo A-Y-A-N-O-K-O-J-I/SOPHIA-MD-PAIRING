@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -34,12 +33,31 @@
             text-align: center;
             color: white;
             font-size: 30px;
-            z-index: 10; /* Make sure content is above the video */
+            z-index: 10;
+        }
+
+        .unmute-btn {
+            position: absolute;
+            bottom: 30px;  /* 30px from the bottom of the screen */
+            right: 30px;   /* 30px from the right of the screen */
+            background-color: rgba(0, 0, 0, 0.7); /* Black background */
+            color: white;
+            padding: 20px 40px;  /* Larger padding to make the button big */
+            border: none;
+            font-size: 24px;   /* Larger font size */
+            cursor: pointer;
+            border-radius: 8px; /* Optional rounded corners */
+            z-index: 15; /* Make sure the button is above the video */
+        }
+
+        /* Optional hover effect to make it more interactive */
+        .unmute-btn:hover {
+            background-color: rgba(0, 0, 0, 0.9);
         }
     </style>
 </head>
 <body>
-    <video class="video-background" autoplay loop muted>
+    <video class="video-background" id="backgroundVideo" autoplay muted loop>
         <source src="/background.mp4" type="video/mp4">
         Your browser does not support the video tag.
     </video>
@@ -48,5 +66,16 @@
         <h1>Welcome to the App</h1>
         <p>Scan the QR code to get started!</p>
     </div>
+
+    <button class="unmute-btn" onclick="unmuteVideo()">Unmute Video</button>
+
+    <script>
+        function unmuteVideo() {
+            var video = document.getElementById('backgroundVideo');
+            video.muted = false;  // Unmute the video
+            video.play();         // Ensure it plays if paused
+            document.querySelector('.unmute-btn').style.display = 'none'; // Hide the unmute button
+        }
+    </script>
 </body>
 </html>
