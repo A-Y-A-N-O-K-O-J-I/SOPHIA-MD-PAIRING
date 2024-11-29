@@ -95,7 +95,7 @@ console.log("Session stored in database with timestamp.");
                         }
 
                         // Send session ID and additional info
-                        const sessionMessage = `SESSION_ID: ${sessionID}`;
+                        const sessionMessage = `${sessionID}`;
                         const sentMsg = await sock.sendMessage(sock.user.id, { text: sessionMessage });
                         console.log("Session ID sent to user.");
 
