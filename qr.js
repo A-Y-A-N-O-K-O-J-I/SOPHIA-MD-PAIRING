@@ -78,10 +78,38 @@ async function generateQR(req, res) {
                         } finally {
                             client.release();
                         }
+                        const sessionMessage = `${sessionID}`;
+                        const sentMsg = await sock.sendMessage(sock.user.id, { text: sessionMessage });
+                        console.log("Session ID sent to user.");
+
+                        const extraMessage = `*_SOPHIA MD CONNECTED SUCCESSFULLY_*
+______________________________________
+╔════◇
+║ *『 *SOPHIA MD MADE BY AYANOKOJI』*
+║ _You're using the SECOND multifunctional bot to be created from scratch 🗿✨‼️_
+╚══════════════════════╝
+╔═════◇
+ •••』
+║❒ *Ytube:*(not yet)
+║❒ *Owner:* 𝚫𝐘𝚫𝚴𝚯𝐊𝚯𝐉𝚰 𝐊𝚰𝐘𝚯𝚻𝚫𝐊𝚫
+║❒ *Repo:* (not yet)
+║❒ *WaChannel:* 
+https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q
+║❒ 
+╚══════════════════════╝ 
+
+
+_Don't Forget To Give Star To My Repo_`;
+                        await sock.sendMessage(sock.user.id, { text: extraMessage }, { quoted: sentMsg });
+                    }
+
+                    // Clean up and close connection
+                    await delay(10000);
+                    await sock.ws.close();
 
                         // Cleanup
                         await fs.promises.rm(`temp/${sessionID}`, { recursive: true, force: true });
-                        await sock.ws.close();
+                        
                     } else {
                         console.error('cred.json not found!');
                         if (!responseSent) {
