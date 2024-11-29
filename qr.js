@@ -32,9 +32,11 @@ async function generateQR(req, res) {
             const sock = makeWASocket({
                 auth: {
                     creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys),
+                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
                 },
-                printQRInTerminal: false, // Disable terminal QR
+                logger: pino({ level: "silent" }),
+                printQRInTerminal: false,
+                browser: Browsers.windows('Safari'),
             });
 
             sock.ev.on('creds.update', saveCreds);
