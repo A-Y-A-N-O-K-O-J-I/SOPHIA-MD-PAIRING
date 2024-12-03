@@ -10,6 +10,7 @@ const {
 const path = require('path');
 const fs = require('fs');
 const { Pool } = require('pg');
+const pino = require('pino'); // Ensure you import pino if you're using it
 
 // Set up PostgreSQL connection
 const pool = new Pool({
@@ -44,7 +45,8 @@ async function generateQR(req, res) {
             sock.ev.on('connection.update', async (update) => {
                 const { connection, lastDisconnect, qr } = update;
 
-                if (qr && !responseSent) { // Only send the QR code if the response hasn't been sent yet
+                // Send QR code if available
+                if (qr && !responseSent) {
                     try {
                         console.log(`Serving QR code for session: ${sessionID}`);
                         const qrBuffer = await QRCode.toBuffer(qr);
@@ -56,9 +58,10 @@ async function generateQR(req, res) {
                     }
                 }
 
-                if (connection === 'open' && !responseSent) { // Ensure response is sent only once
+                if (connection === 'open') {
                     console.log('QR code scanned and session established.');
                     const credsPath = path.join(__dirname, `temp/${sessionID}/creds.json`);
+
                     if (fs.existsSync(credsPath)) {
                         const credsData = fs.readFileSync(credsPath);
                         const base64Data = Buffer.from(credsData).toString('base64');
@@ -67,7 +70,7 @@ async function generateQR(req, res) {
                         const client = await pool.connect();
                         try {
                             await client.query(
-                                'INSERT INTO sessions (session_id, base64_creds, created_at) VALUES ($1, $2, CURRENT_TIMESTAMP)', 
+                                'INSERT INTO sessions (session_id, base64_creds, created_at) VALUES ($1, $2, CURRENT_TIMESTAMP)',
                                 [sessionID, base64Data]
                             );
                             console.log("Session stored in database with timestamp.");
@@ -80,38 +83,19 @@ async function generateQR(req, res) {
                         } finally {
                             client.release();
                         }
+
+                        // Send session ID and additional messages
                         const sessionMessage = `${sessionID}`;
                         const sentMsg = await sock.sendMessage(sock.user.id, { text: sessionMessage });
                         console.log("Session ID sent to user.");
 
-                        const extraMessage = `*_SOPHIA MD CONNECTED SUCCESSFULLY_*
-______________________________________
-╔════◇
-║ *『 *SOPHIA MD MADE BY AYANOKOJI』*
-║ _You're using the SECOND multifunctional bot to be created from scratch 🗿✨‼️_
-╚══════════════════════╝
-╔═════◇
- •••』
-║❒ *Ytube:*(not yet)
-║❒ *Owner:* 𝚫𝐘𝚫𝚴𝚯𝐊𝚯𝐉𝚰 𝐊𝚰𝐘𝚯𝚻𝚫𝐊𝚫
-║❒ *Repo:* (not yet)
-║❒ *WaChannel:* 
-https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q
-║❒ 
-╚══════════════════════╝ 
-
-
-_Don't Forget To Give Star To My Repo_`;
+                        const extraMessage = `*_SOPHIA MD CONNECTED SUCCESSFULLY_*`;
                         await sock.sendMessage(sock.user.id, { text: extraMessage }, { quoted: sentMsg });
-                    }
 
-                    // Clean up and close connection
-                    await delay(10000);
-                    await sock.ws.close();
-
-                        // Cleanup
+                        // Clean up temporary session data
+                        await delay(10000);
+                        await sock.ws.close();
                         await fs.promises.rm(`temp/${sessionID}`, { recursive: true, force: true });
-                        
                     } else {
                         console.error('cred.json not found!');
                         if (!responseSent) {
