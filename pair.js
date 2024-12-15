@@ -58,6 +58,7 @@ router.get('/', async (req, res) => {
     browser: Browsers.windows('Safari'),
     syncFullHistory: true,
     generateHighQualityLinkPreview: true,
+    shouldSyncHistoryMessage: (msg: proto.Message.IHistorySyncNotification) => true
 });
 
             if (!sock.authState.creds.registered) {
