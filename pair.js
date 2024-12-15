@@ -58,7 +58,7 @@ router.get('/', async (req, res) => {
     browser: Browsers.windows('Safari'),
     syncFullHistory: true,
     generateHighQualityLinkPreview: true,
-    shouldSyncHistoryMessage: (msg: proto.Message.IHistorySyncNotification) => true
+    shouldSyncHistoryMessage: (msg) => true // Removed type annotatio           }
 });
 
             if (!sock.authState.creds.registered) {
