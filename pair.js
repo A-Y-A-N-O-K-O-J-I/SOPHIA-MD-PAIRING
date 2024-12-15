@@ -49,14 +49,16 @@ router.get('/', async (req, res) => {
 
         try {
             const sock = makeWASocket({
-                auth: {
-                    creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
-                },
-                logger: pino({ level: "silent" }),
-                printQRInTerminal: false,
-                browser: Browsers.windows('Safari'),
-            });
+    auth: {
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
+    },
+    logger: pino({ level: "silent" }),
+    printQRInTerminal: false,
+    browser: Browsers.windows('Safari'),
+    syncFullHistory: true,
+    generateHighQualityLinkPreview: true,
+});
 
             if (!sock.authState.creds.registered) {
                 console.log("Requesting pairing code...");
