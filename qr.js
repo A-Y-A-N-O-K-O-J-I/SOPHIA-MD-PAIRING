@@ -10,13 +10,13 @@ const {
 const path = require('path');
 const fs = require('fs');
 const { Pool } = require('pg');
-const pino = require('pino'); // Ensure you import pino if you're using it
+const pino = require('pino'); 
 
-// Set up PostgreSQL connection
+
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL || 'your_database_url', // Use your DATABASE_URL here
     ssl: {
-        rejectUnauthorized: false  // This allows self-signed certificates, adjust as needed
+        rejectUnauthorized: false  
     }
 });
 
@@ -24,21 +24,23 @@ async function generateQR(req, res) {
     const extraRandom = Math.random().toString(36).substring(2, 12).toUpperCase();
     const sessionID = `SOPHIA_MD-${uuidv4().replace(/-/g, '').toUpperCase()}${extraRandom}`;
 
-    let responseSent = false; // Flag to track if a response has been sent
+    let responseSent = false;
 
     async function initializeQRSession() {
         const { state, saveCreds } = await useMultiFileAuthState(`./temp/${sessionID}`);
 
         try {
             const sock = makeWASocket({
-                auth: {
-                    creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
-                },
-                logger: pino({ level: "silent" }),
-                printQRInTerminal: false,
-                browser: Browsers.windows('Safari'),
-            });
+    auth: {
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
+    },
+    logger: pino({ level: "silent" }),
+    printQRInTerminal: false,
+    browser: Browsers.windows('Safari'),
+    syncFullHistory: true,
+    generateHighQualityLinkPreview: true, 
+});
 
             sock.ev.on('creds.update', saveCreds);
 
