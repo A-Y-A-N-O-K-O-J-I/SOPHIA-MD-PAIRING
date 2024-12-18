@@ -1,13 +1,14 @@
 {
-  "name": "sophia-md-pair",
+  "name": "ayanokoji-bot",
   "version": "1.0.0",
-  "description": "A web service for generating WhatsApp QR codes and managing sessions for sophia-md",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "vercel-build": "echo 'Building...' && node index.js"
+ "start": "node index.js"
   },
+  "keywords": [],
+  "author": "Ayanokoji",
+  "license": "ISC",
+  "description": "",
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.9",
     "cors": "^2.8.5",
@@ -20,18 +21,5 @@
     "pino": "^9.5.0",
     "qrcode": "^1.5.4",
     "uuid": "^11.0.3"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
-  },
-  "author": "Ayanokoji kiyotaka",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Ayanokojix2306/ayanokoji-qr.git"
-  },
-  "bugs": {
-    "url": "https://github.com/Ayanokojix2306/ayanokoji-qr/issues"
-  },
-  "homepage": "https://github.com/Ayanokojix2306/ayanokoji-qr#readme"
+  }
 }
