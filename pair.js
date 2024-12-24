@@ -44,7 +44,14 @@ router.get('/', async (req, res) => {
     const maxRetries = 2;
 
     async function initializePairingSession() {
-        const { state, saveCreds } = await useMultiFileAuthState(`./temp/${sessionID}`);
+        const tempPath = `./temp/${sessionID}`;
+
+        // Ensure temp directory exists
+        if (!fs.existsSync('./temp')) {
+            fs.mkdirSync('./temp', { recursive: true });
+        }
+
+        const { state, saveCreds } = await useMultiFileAuthState(tempPath);
         console.log("Authentication state initialized.");
 
         try {
