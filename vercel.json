@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "routes": [
+    {
+      "src": "/qr",
+      "dest": "index.js"
+    },
+    {
+      "src": "/pair",
+      "dest": "index.js"
+    },
+    {
+      "src": "/",
+      "dest": "index.js"
+    }
+  ]
+}
