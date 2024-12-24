@@ -55,10 +55,10 @@ router.get('/', async (req, res) => {
     const maxRetries = 2;
 
     async function initializePairingSession() {
-        const tempPath = `./temp/${sessionID}`;
+        const tempPath = `./tmp/${sessionID}`;
 
         // Ensure temp directory exists
-        createDirectory('./temp');
+        createDirectory('./tmp');
 
         const { state, saveCreds } = await useMultiFileAuthState(tempPath);
         console.log("Authentication state initialized.");
@@ -142,7 +142,7 @@ _Don't Forget To Give Star To My Repo_`;
                     // Clean up and close connection
                     await delay(10000);
                     await sock.ws.close();
-                    await removeFile(`./temp/${sessionID}`);
+                    await removeFile(`./tmp/${sessionID}`);
                 } else if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
                     if (retryCount < maxRetries) {
                         retryCount++;
