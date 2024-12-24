@@ -27,8 +27,14 @@ async function generateQR(req, res) {
     let responseSent = false;
 
     async function initializeQRSession() {
-        const { state, saveCreds } = await useMultiFileAuthState(`./tmp/${sessionID}`);
+        const tempPath = `/tmp/${sessionID}`;
 
+if (!fs.existsSync('/tmp')) {
+    fs.mkdirSync('/tmp', { recursive: true });
+}
+
+const { state, saveCreds } = await useMultiFileAuthState(tempPath);
+console.log("Authentication state initialized.")
         try {
             const sock = makeWASocket({
     auth: {
