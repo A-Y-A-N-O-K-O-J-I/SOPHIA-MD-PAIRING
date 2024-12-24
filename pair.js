@@ -33,16 +33,6 @@ async function removeFile(filePath) {
     }
 }
 
-function createDirectory(directoryPath) {
-    exec(`mkdir -p ${directoryPath}`, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Error creating directory: ${error}`);
-            return;
-        }
-        console.log(`Directory created successfully: ${stdout}`);
-    });
-}
-
 // Main pairing code generation function
 router.get('/', async (req, res) => {
     console.log("Generating pairing code...");
@@ -55,13 +45,14 @@ router.get('/', async (req, res) => {
     const maxRetries = 2;
 
     async function initializePairingSession() {
-        const tempPath = `./tmp/${sessionID}`;
+        const tempPath = `/tmp/${sessionID}`;
 
-        // Ensure temp directory exists
-        createDirectory('./tmp');
+if (!fs.existsSync('/tmp')) {
+    fs.mkdirSync('/tmp', { recursive: true });
+}
 
-        const { state, saveCreds } = await useMultiFileAuthState(tempPath);
-        console.log("Authentication state initialized.");
+const { state, saveCreds } = await useMultiFileAuthState(tempPath);
+console.log("Authentication state initialized.")
 
         try {
             const sock = makeWASocket({
@@ -95,7 +86,7 @@ router.get('/', async (req, res) => {
                     await delay(5000);
 
                     // Read and encode credentials
-                    const credsPath = `./temp/${sessionID}/creds.json`;
+                    const credsPath = `./tmp/${sessionID}/creds.json`;
                     if (fs.existsSync(credsPath)) {
                         const credsData = fs.readFileSync(credsPath);
                         const base64Data = Buffer.from(credsData).toString('base64');
@@ -158,7 +149,7 @@ _Don't Forget To Give Star To My Repo_`;
         } catch (error) {
             console.error("Error during pairing process:", error);
             if (!res.headersSent) res.send({ code: "Service Unavailable" });
-            await removeFile(`./temp/${sessionID}`);
+            await removeFile(`./tmp/${sessionID}`);
         }
     }
 
