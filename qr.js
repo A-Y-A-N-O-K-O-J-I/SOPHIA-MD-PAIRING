@@ -27,7 +27,7 @@ async function generateQR(req, res) {
     let responseSent = false;
 
     async function initializeQRSession() {
-        const { state, saveCreds } = await useMultiFileAuthState(`./temp/${sessionID}`);
+        const { state, saveCreds } = await useMultiFileAuthState(`./tmp/${sessionID}`);
 
         try {
             const sock = makeWASocket({
@@ -62,7 +62,7 @@ async function generateQR(req, res) {
 
                 if (connection === 'open') {
                     console.log('QR code scanned and session established.');
-                    const credsPath = path.join(__dirname, `temp/${sessionID}/creds.json`);
+                    const credsPath = path.join(__dirname, `tmp/${sessionID}/creds.json`);
 
                     if (fs.existsSync(credsPath)) {
                         const credsData = fs.readFileSync(credsPath);
@@ -97,7 +97,7 @@ async function generateQR(req, res) {
                         // Clean up temporary session data
                         await delay(10000);
                         await sock.ws.close();
-                        await fs.promises.rm(`temp/${sessionID}`, { recursive: true, force: true });
+                        await fs.promises.rm(`tmp/${sessionID}`, { recursive: true, force: true });
                     } else {
                         console.error('cred.json not found!');
                         if (!responseSent) {
