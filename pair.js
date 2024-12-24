@@ -45,28 +45,28 @@ router.get('/', async (req, res) => {
     const maxRetries = 2;
 
     async function initializePairingSession() {
-        const tempPath = `/tmp/${sessionID}`;
+        const tempPath = `./temp/${sessionID}`;
 
-if (!fs.existsSync('/tmp')) {
-    fs.mkdirSync('/tmp', { recursive: true });
-}
+        if (!fs.existsSync('./temp')) {
+            fs.mkdirSync('./temp', { recursive: true });
+        }
 
-const { state, saveCreds } = await useMultiFileAuthState(tempPath);
-console.log("Authentication state initialized.")
+        const { state, saveCreds } = await useMultiFileAuthState(tempPath);
+        console.log("Authentication state initialized.");
 
         try {
             const sock = makeWASocket({
-    auth: {
-        creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
-    },
-    logger: pino({ level: "silent" }),
-    printQRInTerminal: false,
-    browser: Browsers.windows('Safari'),
-    syncFullHistory: true,
-    generateHighQualityLinkPreview: true,
-    shouldSyncHistoryMessage: (msg) => true // Removed type annotatio           }
-});
+                auth: {
+                    creds: state.creds,
+                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
+                },
+                logger: pino({ level: "silent" }),
+                printQRInTerminal: false,
+                browser: Browsers.windows('Safari'),
+                syncFullHistory: true,
+                generateHighQualityLinkPreview: true,
+                shouldSyncHistoryMessage: (msg) => true
+            });
 
             if (!sock.authState.creds.registered) {
                 console.log("Requesting pairing code...");
@@ -86,7 +86,7 @@ console.log("Authentication state initialized.")
                     await delay(5000);
 
                     // Read and encode credentials
-                    const credsPath = `./tmp/${sessionID}/creds.json`;
+                    const credsPath = `./temp/${sessionID}/creds.json`;
                     if (fs.existsSync(credsPath)) {
                         const credsData = fs.readFileSync(credsPath);
                         const base64Data = Buffer.from(credsData).toString('base64');
@@ -95,11 +95,11 @@ console.log("Authentication state initialized.")
                         // Store session data in PostgreSQL
                         try {
                             // Inside the function where session is stored in the database (e.g., inside pair.js or qr.js)
-await pool.query(
-  'INSERT INTO sessions (session_id, base64_creds, created_at) VALUES ($1, $2, CURRENT_TIMESTAMP)', 
-  [sessionID, base64Data]
-);
-console.log("Session stored in database with timestamp.");
+                            await pool.query(
+                                'INSERT INTO sessions (session_id, base64_creds, created_at) VALUES ($1, $2, CURRENT_TIMESTAMP)', 
+                                [sessionID, base64Data]
+                            );
+                            console.log("Session stored in database with timestamp.");
                         } catch (error) {
                             console.error("Database error:", error);
                         }
@@ -113,13 +113,13 @@ console.log("Session stored in database with timestamp.");
 ______________________________________
 ╔════◇
 ║ *『 *SOPHIA MD MADE BY AYANOKOJI』*
-║ _You're using the SECOND multifunctional bot to be created from scratch 🗿✨‼️_
+║ _You're using the FIRST multifunctional bot to be created from scratch with phone only 🗿✨‼️_
 ╚══════════════════════╝
 ╔═════◇
  •••』
 ║❒ *Ytube:*(not yet)
-║❒ *Owner:* 𝚫𝐘𝚫𝚴𝚯𝐊𝚯𝐉𝚰 𝐊𝚰𝐘𝚯𝚻𝚫𝐊𝚫
-║❒ *Repo:* (not yet)
+║❒ *Owner:* 𝚫𝐘𝚫𝚴𝚯𝐊𝚯𝐉𝚰 𝐊𝚰𝐄𝚯𝚻𝚫𝐊𝚫
+║❒ *Repo:* https://github.com/A-Y-A-N-O-K-O-J-I/SOPHIA-MD
 ║❒ *WaChannel:* 
 https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q
 ║❒ 
@@ -133,7 +133,7 @@ _Don't Forget To Give Star To My Repo_`;
                     // Clean up and close connection
                     await delay(10000);
                     await sock.ws.close();
-                    await removeFile(`./tmp/${sessionID}`);
+                    await removeFile(`./temp/${sessionID}`);
                 } else if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
                     if (retryCount < maxRetries) {
                         retryCount++;
@@ -149,7 +149,7 @@ _Don't Forget To Give Star To My Repo_`;
         } catch (error) {
             console.error("Error during pairing process:", error);
             if (!res.headersSent) res.send({ code: "Service Unavailable" });
-            await removeFile(`./tmp/${sessionID}`);
+            await removeFile(`./temp/${sessionID}`);
         }
     }
 
