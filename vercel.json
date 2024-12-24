@@ -16,7 +16,7 @@
       "dest": "index.js"
     },
     {
-      "src": "/validate",
+      "src": "/valid",
       "dest": "index.js"
     },
     {
