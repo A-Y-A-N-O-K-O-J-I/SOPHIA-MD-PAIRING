@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json());
 
 // Validation endpoint
-app.post('/validate', (req, res) => {
+app.post('/', (req, res) => {
   const { number } = req.body;
 
   if (!number) {
