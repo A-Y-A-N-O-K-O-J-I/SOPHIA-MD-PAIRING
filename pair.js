@@ -32,6 +32,16 @@ async function removeFile(filePath) {
     }
 }
 
+function createDirectory(directoryPath) {
+    exec(`mkdir -p ${directoryPath}`, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error creating directory: ${error}`);
+            return;
+        }
+        console.log(`Directory created successfully: ${stdout}`);
+    });
+}
+
 // Main pairing code generation function
 router.get('/', async (req, res) => {
     console.log("Generating pairing code...");
@@ -47,9 +57,7 @@ router.get('/', async (req, res) => {
         const tempPath = `./temp/${sessionID}`;
 
         // Ensure temp directory exists
-        if (!fs.existsSync('./temp')) {
-            fs.mkdirSync('./temp', { recursive: true });
-        }
+        createDirectory('./temp');
 
         const { state, saveCreds } = await useMultiFileAuthState(tempPath);
         console.log("Authentication state initialized.");
