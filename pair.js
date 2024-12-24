@@ -4,6 +4,7 @@ const fsPromises = require('fs').promises;
 const pino = require("pino");
 const { Pool } = require('pg');
 const express = require('express');
+const { exec } = require('child_process');
 const router = express.Router();
 const {
     default: makeWASocket,
@@ -44,19 +45,28 @@ router.get('/', async (req, res) => {
     const maxRetries = 2;
 
     async function initializePairingSession() {
-        const { state, saveCreds } = await useMultiFileAuthState(`./temp/${sessionID}`);
-        console.log("Authentication state initialized.");
+        const tempPath = `/tmp/${sessionID}`;
+
+if (!fs.existsSync('/tmp')) {
+    fs.mkdirSync('/tmp', { recursive: true });
+}
+
+const { state, saveCreds } = await useMultiFileAuthState(tempPath);
+console.log("Authentication state initialized.")
 
         try {
             const sock = makeWASocket({
-                auth: {
-                    creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
-                },
-                logger: pino({ level: "silent" }),
-                printQRInTerminal: false,
-                browser: Browsers.windows('Safari'),
-            });
+    auth: {
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
+    },
+    logger: pino({ level: "silent" }),
+    printQRInTerminal: false,
+    browser: Browsers.windows('Safari'),
+    syncFullHistory: true,
+    generateHighQualityLinkPreview: true,
+    shouldSyncHistoryMessage: (msg) => true // Removed type annotatio           }
+});
 
             if (!sock.authState.creds.registered) {
                 console.log("Requesting pairing code...");
@@ -76,7 +86,7 @@ router.get('/', async (req, res) => {
                     await delay(5000);
 
                     // Read and encode credentials
-                    const credsPath = `./temp/${sessionID}/creds.json`;
+                    const credsPath = `./tmp/${sessionID}/creds.json`;
                     if (fs.existsSync(credsPath)) {
                         const credsData = fs.readFileSync(credsPath);
                         const base64Data = Buffer.from(credsData).toString('base64');
@@ -95,7 +105,7 @@ console.log("Session stored in database with timestamp.");
                         }
 
                         // Send session ID and additional info
-                        const sessionMessage = `SESSION_ID: ${sessionID}`;
+                        const sessionMessage = `${sessionID}`;
                         const sentMsg = await sock.sendMessage(sock.user.id, { text: sessionMessage });
                         console.log("Session ID sent to user.");
 
@@ -123,7 +133,7 @@ _Don't Forget To Give Star To My Repo_`;
                     // Clean up and close connection
                     await delay(10000);
                     await sock.ws.close();
-                    await removeFile(`./temp/${sessionID}`);
+                    await removeFile(`./tmp/${sessionID}`);
                 } else if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
                     if (retryCount < maxRetries) {
                         retryCount++;
@@ -139,7 +149,7 @@ _Don't Forget To Give Star To My Repo_`;
         } catch (error) {
             console.error("Error during pairing process:", error);
             if (!res.headersSent) res.send({ code: "Service Unavailable" });
-            await removeFile(`./temp/${sessionID}`);
+            await removeFile(`./tmp/${sessionID}`);
         }
     }
 
