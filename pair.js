@@ -4,6 +4,7 @@ const fsPromises = require('fs').promises;
 const pino = require("pino");
 const { Pool } = require('pg');
 const express = require('express');
+const { exec } = require('child_process');
 const router = express.Router();
 const {
     default: makeWASocket,
