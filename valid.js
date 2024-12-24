@@ -31,7 +31,4 @@ app.post('/', (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 4000; // Use a different port to avoid conflict
-app.listen(PORT, () => {
-  console.log(`Validation service running on port ${PORT}`);
-});
+module.exports = validate
