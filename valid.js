@@ -1,13 +1,10 @@
 const express = require('express');
 const PhoneNumber = require('awesome-phonenumber');
-const cors = require('cors');
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+const router = express.Router();
 
 // Validation endpoint
-app.post('/valid', (req, res) => {
+router.post('/', (req, res) => {
   const { number } = req.body;
 
   if (!number) {
@@ -31,4 +28,4 @@ app.post('/valid', (req, res) => {
   }
 });
 
-module.exports = app;
+module.exports = router;
