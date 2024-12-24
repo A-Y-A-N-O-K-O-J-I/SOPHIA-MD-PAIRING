@@ -31,4 +31,4 @@ app.post('/', (req, res) => {
   }
 });
 
-module.exports = validate
+module.exports = app;
