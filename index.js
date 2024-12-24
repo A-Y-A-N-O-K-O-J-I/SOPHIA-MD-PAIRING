@@ -27,7 +27,7 @@ app.get('/qr', generateQR);
 // Use the pairRouter for handling pairing coade generation at /pair route
 app.use('/pair', pairRouter);
 
-app.use('/validate',validate);
+app.use('/num',validate);
 // Serve the main page with the background video
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/public/index.html'); // Serve the index.html file from public
