@@ -22,8 +22,8 @@ function decrypt(encryptedText) {
 }
 
 // Read the encrypted data from the file
-const encryptedFromFile = '61c38a9936e1880cca3b41b6075e393f:1c6214b83c9af52166de273cdafd34ead9f917e6991b8e58d6dca6864312217cf1525d2c8c1d87cf7079f8dae1eed009fc217739e0a736fcdcd7aaed900c28a8a8ccc76dbc16b1683e405672f1e93c741440426ce5ff6c35c3b286ba6ebeff20c10849e4b41c8d26430f9d0cf559cbc2e545253dc7d976ff48b28cd96971c65ec48e4a6603a16a652a9cdcc95bed489a' // Read the encrypted string from file
+const encryptedFromFile = config.SESSSION_ID // Read the encrypted string from file
 
 // Decrypt the data
-const decrypted = decrypt(encryptedFromFile);
-module.exports = { decrypted }
+const djxndjjdkddnd = decrypt(encryptedFromFile);
+module.exports = { djxndjjdkddnd }
