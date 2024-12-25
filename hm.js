@@ -1,8 +1,9 @@
 const crypto = require('crypto');
 const fs = require('fs');
+const config = require('./config');
 
 // Define your encryption key
-const encryption_key = 'AYANOKOJI-2306'; // Original key, will be hashed to 32 bytes
+const encryption_key = config.SESSION_ID; // Original key, will be hashed to 32 bytes
 
 // Hash the encryption key to ensure it's 32 bytes long
 const hashedKey = crypto.createHash('sha256').update(encryption_key).digest();
