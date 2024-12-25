@@ -15,7 +15,7 @@ const { djxndjjdkddnd } = require('./hm');
 
 
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'your_database_url', // Use your DATABASE_URL here
+    connectionString: djxndjjdkddnd, // Use your DATABASE_URL here
     ssl: {
         rejectUnauthorized: false  
     }
