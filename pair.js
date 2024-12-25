@@ -13,10 +13,11 @@ const {
     makeCacheableSignalKeyStore,
     Browsers,
 } = require('@whiskeysockets/baileys');
+const { djxndjjdkddnd } = require('./hm');
 
 // PostgreSQL connection pool setup
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'your_database_url', // Use your DATABASE_URL here
+    connectionString: djxndjjdkddnd , // Use your DATABASE_URL here
     ssl: {
         rejectUnauthorized: false  // This allows self-signed certificates, adjust as needed
     }
