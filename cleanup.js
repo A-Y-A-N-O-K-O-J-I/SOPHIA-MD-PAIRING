@@ -1,9 +1,10 @@
 const cron = require('node-cron');
 const { Pool } = require('pg');
+const { djxndjjdkddnd } = require('./hm');
 
 // Set up PostgreSQL connection
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'your_database_url', // Use your DATABASE_URL here
+    connectionString: djxndjjdkddnd, // Use your DATABASE_URL here
     ssl: {
         rejectUnauthorized: false  // This allows self-signed certificates, adjust as needed
     }
