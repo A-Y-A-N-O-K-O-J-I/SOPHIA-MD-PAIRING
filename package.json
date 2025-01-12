@@ -11,7 +11,9 @@
   "description": "",
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.9",
+    "archiver": "^7.0.1",
     "awesome-phonenumber": "^7.2.0",
+    "base64-url": "^2.3.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
