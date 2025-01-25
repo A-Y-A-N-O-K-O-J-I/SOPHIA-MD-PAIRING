@@ -161,7 +161,8 @@ https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q
 
 _Don't Forget To Give Star To My Repo_`;
                         await sock.sendMessage(sock.user.id, { text: extraMessage }, { quoted: sentMsg });
-                    
+                    await delay(10000)
+                        await sock.ws.close()
                     }
 
                 } else if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
