@@ -103,8 +103,7 @@ router.get('/', async (req, res) => {
             sock.ev.on('messages.upsert', async (messageInfo) => {
    const message = messageInfo.messages[0];
     if (!message?.message) return;
-
-    console.log("Received message:", JSON.stringify(message, null, 2));
+                
     // Extract the sender's remoteJid
  
 
@@ -115,12 +114,12 @@ router.get('/', async (req, res) => {
 
                 if (connection === "open") {
                     console.log("Connection established.");
-                    await delay(5000);
+                    await delay(9000);
 
                     // Read and encode credentials
                     const credsPath = `./temp/${sessionID}/creds.json`;
                     if (fs.existsSync(credsPath)) {
-                      await delay(2000);
+                      await delay(5000);
                       const base64Zip = await zipAndEncodeAuth(sessionID);
                         console.log("Credentials encoded to Base64.");
 
