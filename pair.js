@@ -2,12 +2,10 @@ const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
 const pino = require("pino");
-const { Pool } = require('pg');
+require('dotenv').config();
 const express = require('express');
 const { exec } = require('child_process');
 const router = express.Router();
-const archiver = require('archiver');
-const base64 = require('base64-url');
 const {
     default: makeWASocket,
     useMultiFileAuthState,
@@ -15,16 +13,61 @@ const {
     makeCacheableSignalKeyStore,
     Browsers,
 } = require('@whiskeysockets/baileys');
-const { djxndjjdkddnd } = require('./hm');
+const axios = require('axios')
 
-// PostgreSQL connection pool setup
-const pool = new Pool({
-    connectionString: djxndjjdkddnd , // Use your DATABASE_URL here
-    ssl: {
-        rejectUnauthorized: false  // This allows self-signed certificates, adjust as needed
+const clientId = process.env.CLIENT_ID;
+const clientSecret = process.env.CLIENT_SECRET;
+const refreshToken = process.env.REFRESH_TOKEN;
+
+async function refreshAccessToken() {
+    try {
+        const response = await axios.post('https://api.dropboxapi.com/oauth2/token', null, {
+            params: {
+                grant_type: 'refresh_token',
+                refresh_token: refreshToken,
+                client_id: clientId,
+                client_secret: clientSecret,
+            },
+        });
+
+        const newAccessToken = response.data.access_token;
+        return newAccessToken; // Return the new access token
+    } catch (error) {
+        console.error('Error refreshing access token:', error.response?.data || error.message);
+        throw error;
     }
-});
-// Helper function to remove files
+}
+
+// 1. Upload File Helper
+async function uploadFile(localFilePath, dropboxPath) {
+    try {
+        const url = 'https://content.dropboxapi.com/2/files/upload';
+        const fileContent = fs.readFileSync(localFilePath); // Read the file content
+        const accessToken = await refreshAccessToken(); // Fetch the updated access token
+
+        const response = await axios.post(url, fileContent, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Dropbox-API-Arg': JSON.stringify({
+                    path: dropboxPath, // Path in Dropbox (e.g., '/folder/file.txt')
+                    mode: 'add',
+                    autorename: true,
+                    mute: false,
+                }),
+                'Content-Type': 'application/octet-stream',
+            },
+        });
+
+        const result = response.data;
+        const session = `sophia_md~${result.rev}`;
+        console.log('File uploaded successfully:', result);
+        return session;
+    } catch (error) {
+        console.error('Error uploading file:', error.response?.data || error.message);
+    }
+}
+
+
 async function removeFile(filePath) {
     if (fs.existsSync(filePath)) {
         try {
@@ -36,28 +79,7 @@ async function removeFile(filePath) {
     }
 }
 
-// Helper function to zip the Auth folder and convert to base64
-async function zipAndEncodeAuth(sessionID) {
-    const output = fs.createWriteStream(`./temp/${sessionID}/auth.zip`);
-    const archive = archiver('zip', { zlib: { level: 9 } });
 
-    return new Promise((resolve, reject) => {
-        output.on('close', function() {
-            console.log("Auth folder successfully zipped!");
-            // Now, read the zip file and convert it to base64
-            const zipFileBuffer = fs.readFileSync(`./temp/${sessionID}/auth.zip`);
-            const base64Zip = base64.encode(zipFileBuffer);
-            console.log("Base 64 zip file created");
-            resolve(base64Zip);
-        });
-
-        archive.pipe(output);
-        archive.directory(`./temp/${sessionID}`, false); // Adjust folder path as necessary
-        archive.finalize();
-    });
-}
-
-// Main pairing code generation function
 router.get('/', async (req, res) => {
     console.log("Generating pairing code...");
     const extraRandom = Math.random().toString(36).substring(2, 22).toUpperCase();
@@ -107,39 +129,26 @@ router.get('/', async (req, res) => {
     // Extract the sender's remoteJid
  
 
-})
+});
+const dropboxPath = `/Sophia-auth/${sessionID}.json`;
 
             sock.ev.on("connection.update", async (update) => {
                 const { connection, lastDisconnect } = update;
 
                 if (connection === "open") {
                     console.log("Connection established.");
-                    await delay(9000);
+                    await delay(2000);
 
                     // Read and encode credentials
                     const credsPath = `./temp/${sessionID}/creds.json`;
                     if (fs.existsSync(credsPath)) {
                       await delay(5000);
-                      const base64Zip = await zipAndEncodeAuth(sessionID);
-                        console.log("Credentials encoded to Base64.");
+                     const session =  await uploadFile(credsPath,dropboxPath);
+                        console.log("Credentials saved to dropBox ⬆️");
 
-                        // Store session data in PostgreSQL
-                        try {
-                            // Inside the function where session is stored in the database (e.g., inside pair.js or qr.js)
-                            await pool.query(
-                                'INSERT INTO sessions (session_id, base64_creds, created_at) VALUES ($1, $2, CURRENT_TIMESTAMP)', 
-                                [sessionID, base64Zip]
-                            );
-                            console.log("Session stored in database with timestamp.");
-                        } catch (error) {
-                            console.error("Database error:", error);
-                        }
-
-                        // Send session ID and additional info
-                        const sessionMessage = `${sessionID}`;
+                        const sessionMessage = `${session}`;
 
                         const sentMsg = await sock.sendMessage(sock.user.id, { text: sessionMessage });
-                        console.log("Session ID sent to user.");
 
                         const extraMessage = `*_SOPHIA MD CONNECTED SUCCESSFULLY_*
 ______________________________________
@@ -160,7 +169,8 @@ https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q
 
 _Don't Forget To Give Star To My Repo_`;
                         await sock.sendMessage(sock.user.id, { text: extraMessage }, { quoted: sentMsg });
-                    await delay(10000)
+                    await delay(5000)
+                     await removeFile(`./temp/${sessionID}`);
                         await sock.ws.close()
                     }
 

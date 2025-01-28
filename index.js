@@ -1,15 +1,11 @@
 const express = require('express');
 const cors = require('cors');
-const { generateQR } = require('./qr'); // Import the QR code generation function
-const pairRouter = require('./pair'); // Import pair.js router
-const { createSessionsTable } = require('./setupTable'); // Import table setup
-require('./cleanup'); // Import the cleanup script to run the scheduled task
-const validate = require('./valid'); // Import the validate router
+const { generateQR } = require('./qr');
+const pairRouter = require('./pair');
+const validate = require('./valid');
 
-// Set up Express app
 const app = express();
 
-// Set up CORS to allow specific origins
 app.use(cors({
     origin: ['https://sophia-md-pair.vercel.app', 'http://localhost:3000'],
     methods: ['GET'],
@@ -22,8 +18,7 @@ app.use(express.json());
 // Serve static files (like video, images, etc.) from the public folder
 app.use(express.static('public'));
 
-// Call the table setup to ensure the sessions table is created
-createSessionsTable();
+
 
 // Route to generate QR code
 app.get('/qr', generateQR);
