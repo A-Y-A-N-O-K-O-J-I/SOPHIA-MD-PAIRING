@@ -1,8 +1,8 @@
 # SOPHIA MD PAIRING CODE LOGIC USING DROPBOX DB
 
 ## INFO
-Sophia MD pairing using dropbox isn't really easy but its the best way to optimise ram use.
-- Fork, Star and Edit as you wish
+Sophia MD pairing uses dropbox database and it wasn't really easy but its the best way to optimise ram use.
+- Fork, Star and Edit as you wish(don't forget to give credit when editing)
 - Deploy to your favourite hosting server eg Heroku or Render or self hosting
 - This is what I use in my **[Session Site](https://sophia-md-pair.vercel.app)**
 
@@ -65,10 +65,59 @@ getTokens('YGrg1ZWd-LIAAAAAAAAAHlTW4vywmIBsJOSapaE');
 ```
 #### Info: Dropbox Access tokens expires after 4 hours but i made a method that would make it permanent using the refresh token
 ```js
+const clientId = process.env.CLIENT_ID;
+const clientSecret = process.env.CLIENT_SECRET;
+const refreshToken = process.env.REFRESH_TOKEN;
 
-const lol = {}
+async function refreshAccessToken() {
+    try {
+        const response = await axios.post('https://api.dropboxapi.com/oauth2/token', null, {
+            params: {
+                grant_type: 'refresh_token',
+                refresh_token: refreshToken,
+                client_id: clientId,
+                client_secret: clientSecret,
+            },
+        });
+
+        const newAccessToken = response.data.access_token;
+        return newAccessToken; // Return the new access token
+    } catch (error) {
+        console.error('Error refreshing access token:', error.response?.data || error.message);
+        throw error;
+    }
+}
+
+// 1. Upload File Helper
+async function uploadFile(localFilePath, dropboxPath) {
+    try {
+        const url = 'https://content.dropboxapi.com/2/files/upload';
+        const fileContent = fs.readFileSync(localFilePath); // Read the file content
+        const accessToken = await refreshAccessToken(); // Fetch the updated access token
+
+        const response = await axios.post(url, fileContent, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Dropbox-API-Arg': JSON.stringify({
+                    path: dropboxPath, // Path in Dropbox (e.g., '/folder/file.txt')
+                    mode: 'add',
+                    autorename: true,
+                    mute: false,
+                }),
+                'Content-Type': 'application/octet-stream',
+            },
+        });
+
+        const result = response.data;
+        const session = `sophia_md~${result.rev}`;
+        console.log('File uploaded successfully:', result);
+        return session;
+    } catch (error) {
+        console.error('Error uploading file:', error.response?.data || error.message);
+    }
+}
 ```
- 
-##### Note: Use a work email address a personal address will bring problems.
+Now you're all set to use dropbox database for your session connection.
+##### Note: Use a work email address. A personal address will bring problems.
 
 
