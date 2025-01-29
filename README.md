@@ -24,7 +24,7 @@ in the permission section of the app check ✅ everything pertaining file like t
 
 after that run this on your browser 
 ```
-https://www.dropbox.com/oauth2/authorize?client_id=<YOURAPPAPIKEY>&token_access_type=offline&response_type=code
+https://www.dropbox.com/oauth2/authorize?client_id=<YOURAPPKEY>&token_access_type=offline&response_type=code
 ```
 you should get a long code looking like this 'YGrg1ZWd-LIAAAAAAAAAFHeuuCpM-tbGNlc43s_LnGg'
 
