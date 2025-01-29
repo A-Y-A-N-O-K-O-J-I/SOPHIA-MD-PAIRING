@@ -51,8 +51,23 @@ async function getTokens(authCode) {
 // Call the function
 getTokens('YGrg1ZWd-LIAAAAAAAAAHlTW4vywmIBsJOSapaE');
 ```
- You should get an output looking like this .
+ You should get an output looking like this 
+ ```js
+ Tokens: {
+  access_token: 'sl.CFVUzd_lpDoe9zm9lZjvsXd3cxNbacAb3iVUi95PiNyN3FxSZyecfENHDpS0AQaKHiegmnkPLB8i5NUN5FZF2StBvovi7v5CcMphd-2oBK3QUvsgX8DN9HE',
+  token_type: 'bearer',
+  expires_in: 14400,
+  refresh_token: 'x-8GMxBxYM6GraNP7TUVoEBZ9_1mIdQ1A',
+  scope: 'account_info.read contacts.read contacts.write file_requests.read file_requests.write files.content.write files.metadata.read files.metadata.write sharing.read sharing.write',
+  uid: '1578775219',
+  account_id: 'dbid:AAD7RhoDKt5Pq2bQOH_ARMw4ENQk3cXmacw'
+}
+```
+#### Info: Dropbox Access tokens expires after 4 hours but i made a method that would make it permanent using the refresh token
+```js
 
+const lol = {}
+```
  
 ##### Note: Use a work email address a personal address will bring problems.
 
