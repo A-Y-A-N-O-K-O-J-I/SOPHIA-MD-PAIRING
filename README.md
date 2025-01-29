@@ -51,7 +51,7 @@ async function getTokens(authCode) {
 // Call the function
 getTokens('YGrg1ZWd-LIAAAAAAAAAHlTW4vywmIBsJOSapaE');
 ```
- You should get an output looking like this 
+ #### You should get an output looking like this 
  ```js
  Tokens: {
   access_token: 'sl.CFVUzd_lpDoe9zm9lZjvsXd3cxNbacAb3iVUi95PiNyN3FxSZyecfENHDpS0AQaKHiegmnkPLB8i5NUN5FZF2StBvovi7v5CcMphd-2oBK3QUvsgX8DN9HE',
@@ -63,7 +63,7 @@ getTokens('YGrg1ZWd-LIAAAAAAAAAHlTW4vywmIBsJOSapaE');
   account_id: 'dbid:AAD7RhoDKt5Pq2bQOH_ARMw4ENQk3cXmacw'
 }
 ```
-#### Info: Dropbox Access tokens expires after 4 hours but i made a method that would make it permanent using the refresh token
+#### Dropbox Access tokens expires after 4 hours but i made a method that would make it permanent using the refresh token
 ```js
 const clientId = process.env.CLIENT_ID;
 const clientSecret = process.env.CLIENT_SECRET;
