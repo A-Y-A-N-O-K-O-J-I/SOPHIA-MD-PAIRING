@@ -17,6 +17,17 @@ After creating the app you should see something like this
 
 ![DROPBOX](https://files.catbox.moe/cdl0my.jpg)
 Copy the api key and the secret and store them safe. it'll be used later
+
+in the permission section of the app check ✅ everything pertaining file like this
+
+![DROPBOX](https://files.catbox.moe/mr6e9k.jpg)
+
+after that run this on your browser 
+```
+consy knjj
+```
+you should get a long code
+
 ##### Note: Use a work email address a personal address will bring problems.
 
 
