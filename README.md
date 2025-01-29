@@ -6,4 +6,5 @@ Sophia MD pairing using dropbox isn't really easy but its the best way to optimi
 - Deploy to your favourite hosting server eg Heroku or Render or self hosting
 - This is what I use in my **[Session Site](https://sophia-md-pair.vercel.app)**
 
+## HOW TO AUTHENTICATE DROPBOX DB
 
