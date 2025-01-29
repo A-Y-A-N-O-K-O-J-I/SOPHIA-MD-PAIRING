@@ -26,7 +26,7 @@ after that run this on your browser
 ```
 https://www.dropbox.com/oauth2/authorize?client_id=<YOURAPPKEY>&token_access_type=offline&response_type=code
 ```
-you should get a long code looking like this 'YGrg1ZWd-LIAAAAAAAAAFHeuuCpM-tbGNlc43s_LnGg'
+you should get a long code looking like this 'YGg1ZWd-LIAAAAAAAAAFHeCpM-tbGNlc43s_LnGg'
 
 ##### Note: Use a work email address a personal address will bring problems.
 
