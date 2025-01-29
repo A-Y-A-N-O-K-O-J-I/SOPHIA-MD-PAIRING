@@ -13,6 +13,10 @@ Then go to the **[developer section](https://dropbox.com/developers)**
 Then you create an app give it any name you want 
 
 After creating the app you should see something like this
-<image>
+
+
+![DROPBOX](https://files.catbox.moe/965v9c.jpg)
 Copy the api key and the secret and store them safe. it'll be used later
 ##### Note: Use a work email address a personal address will bring problems.
+
+
