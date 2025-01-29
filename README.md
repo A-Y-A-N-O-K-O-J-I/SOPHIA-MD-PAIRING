@@ -29,7 +29,31 @@ https://www.dropbox.com/oauth2/authorize?client_id=<YOURAPPKEY>&token_access_typ
 you should get a long code looking like this 'YGg1ZWd-LIAAAAAAAAAFHeCpM-tbGNlc43s_LnGg'
 
 run this code on any nodejs server after getting the code (local testing recommended) 
+```js
+const axios = require('axios');
 
+async function getTokens(authCode) {
+    try {
+        const response = await axios.post('https://api.dropboxapi.com/oauth2/token', null, {
+            params: {                                                           
+                code: authCode,
+                grant_type: 'authorization_code',
+                client_id: '<APP KEY>',
+                client_secret: '<APP SECRET>',                           
+            },
+        });
+        console.log('Tokens:', response.data);
+    } catch (error) {
+        console.error('Error exchanging authorization code:', error.response?.data || error.message);
+    }
+}
+
+// Call the function
+getTokens('YGrg1ZWd-LIAAAAAAAAAHlTW4vywmIBsJOSapaE');
+```
+ You should get an output looking like this .
+
+ 
 ##### Note: Use a work email address a personal address will bring problems.
 
 
