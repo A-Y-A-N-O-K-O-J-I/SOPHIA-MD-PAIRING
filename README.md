@@ -132,10 +132,10 @@ async function uploadFile(localFilePath, dropboxPath) {
 
         const result = response.data;
         const session = `sophia_md~${result.rev}`;
-        console.log('✅ File uploaded successfully:', result);
+        console.log(' File uploaded successfully:', result);
         return session;
     } catch (error) {
-        console.error('❌ Error uploading file:', error.response?.data || error.message);
+        console.error(' Error uploading file:', error.response?.data || error.message);
     }
 }
 ```
@@ -165,14 +165,14 @@ async function downloadFile(sessionID) {
         });
 
         if (!response.ok) {
-            console.error('❌ Error downloading file:', await response.text());
+            console.error(' Error downloading file:', await response.text());
             return null;
         }
 
         const content = Buffer.from(await response.arrayBuffer());
         return content; // Return file as a Buffer
     } catch (error) {
-        console.error('❌ Error downloading file:', error);
+        console.error(' Error downloading file:', error);
         return null;
     }
 }
