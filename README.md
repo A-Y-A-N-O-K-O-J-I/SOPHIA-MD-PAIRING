@@ -75,6 +75,24 @@ getTokens('YGrg1ZWd-LIAAAAAAAAAHlTW4vywmIBsJOSapaE');
 
 ---
 
+## 🛠️ Token Response Example
+
+Once the script runs, you’ll get this response:
+```js
+Tokens: {
+  access_token: 'sl.CFVUzd_lpDoe9zm9lZjvsXd3cxNbacAb3iVUi95PiNyN3FxSZyecfENHDpS0AQaKHiegmnkPLB8i5NUN5FZF2StBvovi7v5CcMphd-2oBK3QUvsgX8DN9HE',
+  token_type: 'bearer',
+  expires_in: 14400, // 4 hours
+  refresh_token: 'x-8GMxBxYM6GraNP7TUVoEBZ9_1mIdQ1A',
+  scope: 'files.metadata.read files.metadata.write files.content.write sharing.read sharing.write',
+  uid: '1578775219',
+  account_id: 'dbid:AAD7RhoDKt5Pq2bQOH_ARMw4ENQk3cXmacw'
+}
+
+```
+---
+
+
 ## 🛠️ Make Tokens Permanent (Auto Refresh)
 Dropbox **access tokens expire every 4 hours** 😭, but don’t worry! We’ll use a refresh token to **keep them alive forever**! 🌱  
 
