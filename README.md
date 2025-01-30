@@ -155,7 +155,7 @@ async function downloadFile(sessionID) {
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
                 'Dropbox-API-Arg': JSON.stringify({
-                    path: `rev:${rev}`, // Path in Dropbox (e.g., '/folder/file.txt')
+                    path: `rev:${rev}`, //add the rev here and it'll download the file
                 }),
             },
         });
@@ -176,6 +176,8 @@ module.exports = { downloadFile }
 ```
 
 Now you're all set to use dropbox database for your session connection.
+
+For more info visit dropbox docs
 ##### Note: Use a work email address. A personal address will bring problems.
 
 
