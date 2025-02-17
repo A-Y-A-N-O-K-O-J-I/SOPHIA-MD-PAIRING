@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
 const pino = require("pino");
+const archiver = require('archiver')
 require('dotenv').config();
 const express = require('express');
 const { exec } = require('child_process');
@@ -14,7 +15,7 @@ const {
     Browsers,
 } = require('@whiskeysockets/baileys');
 const axios = require('axios')
-
+const outputZip = './temp/auth.zip'
 const clientId = process.env.CLIENT_ID;
 const clientSecret = process.env.CLIENT_SECRET;
 const refreshToken = process.env.REFRESH_TOKEN;
@@ -38,7 +39,41 @@ async function refreshAccessToken() {
     }
 }
 
-// 1. Upload File Helper
+async function zipFolderWithRetry(sourceFolder, outputZip, retries = 3) {
+    const tempZip = `${outputZip}.part`;
+
+    return new Promise((resolve, reject) => {
+        let attempt = 0; // Track retries
+
+        function attemptZip() {
+            const output = fs.createWriteStream(tempZip);
+            const archive = archiver('zip', { zlib: { level: 9 } });
+
+            archive.pipe(output);
+            archive.directory(sourceFolder, false);
+            archive.finalize();
+
+            output.on('close', () => {
+                fs.renameSync(tempZip, outputZip);
+                console.log(`Zipping done: ${archive.pointer()} bytes`);
+                resolve();
+            });
+
+            output.on('error', (err) => {
+                console.error(`Error in zipping: ${err.message}`);
+                if (attempt < retries) {
+                    console.log(`Retrying... (${++attempt}/${retries})`);
+                    attemptZip(); // Try again
+                } else {
+                    reject(new Error("Failed after multiple retries"));
+                }
+            });
+        }
+
+        attemptZip(); // Start first attempt
+    });
+}
+
 async function uploadFile(localFilePath, dropboxPath) {
     try {
         const url = 'https://content.dropboxapi.com/2/files/upload';
@@ -92,6 +127,7 @@ router.get('/', async (req, res) => {
 
     async function initializePairingSession() {
         const tempPath = `./temp/${sessionID}`;
+        const dropBoxtempPath = `/temp/${sessionID}`;
 
         if (!fs.existsSync('./temp')) {
             fs.mkdirSync('./temp', { recursive: true });
@@ -130,24 +166,24 @@ router.get('/', async (req, res) => {
  
 
 });
-const dropboxPath = `/Sophia-auth/${sessionID}.json`;
+const dropboxPath = `/SOPHIA-MD/${sessionID}.zip`;
 
             sock.ev.on("connection.update", async (update) => {
                 const { connection, lastDisconnect } = update;
 
                 if (connection === "open") {
                     console.log("Connection established.");
-                    await delay(2000);
+                    await delay(10000);
 
                     // Read and encode credentials
                     const credsPath = `./temp/${sessionID}/creds.json`;
                     if (fs.existsSync(credsPath)) {
-                      await delay(5000);
-                     const session =  await uploadFile(credsPath,dropboxPath);
+                     await zipFolderWithRetry(tempPath,outputZip)
+                     const session =  await uploadFile(outputZip,dropboxPath);
+                     
                         console.log("Credentials saved to dropBox ⬆️");
-
+                        if(session){
                         const sessionMessage = `${session}`;
-
                         const sentMsg = await sock.sendMessage(sock.user.id, { text: sessionMessage });
 
                         const extraMessage = `*_SOPHIA MD CONNECTED SUCCESSFULLY_*
@@ -170,10 +206,10 @@ https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q
 _Don't Forget To Give Star To My Repo_`;
                         await sock.sendMessage(sock.user.id, { text: extraMessage }, { quoted: sentMsg });
                     await delay(5000)
-                     await removeFile(`./temp/${sessionID}`);
+                     await removeFile(`./temp/`);
                         await sock.ws.close()
-                    }
-
+                        }
+}
                 } else if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
                     if (retryCount < maxRetries) {
                         retryCount++;
@@ -189,7 +225,7 @@ _Don't Forget To Give Star To My Repo_`;
         } catch (error) {
             console.error("Error during pairing process:", error);
             if (!res.headersSent) res.send({ code: "Service Unavailable" });
-            await removeFile(`./temp/${sessionID}`);
+            await removeFile(`./temp/`);
         }
     }
 

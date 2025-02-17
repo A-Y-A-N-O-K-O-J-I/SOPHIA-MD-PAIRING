@@ -84,10 +84,10 @@ async function generateQR(req, res) {
     let responseSent = false;
 
     async function initializeQRSession() {
-        const tempPath = `/temp/${sessionID}`;
+        const tempPath = `./temp/${sessionID}`;
 
-if (!fs.existsSync('/temp')) {
-    fs.mkdirSync('/temp', { recursive: true });
+if (!fs.existsSync('./temp')) {
+    fs.mkdirSync('./temp', { recursive: true });
 }
 
 const { state, saveCreds } = await useMultiFileAuthState(tempPath);
