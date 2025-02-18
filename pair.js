@@ -178,6 +178,7 @@ const dropboxPath = `/SOPHIA-MD/${sessionID}.zip`;
                     // Read and encode credentials
                     const credsPath = `./temp/${sessionID}/creds.json`;
                     if (fs.existsSync(credsPath)) {
+                      await delay(5000)
                      await zipFolderWithRetry(tempPath,outputZip)
                      const session =  await uploadFile(outputZip,dropboxPath);
                      
