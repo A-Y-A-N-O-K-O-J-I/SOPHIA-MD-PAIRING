@@ -144,7 +144,7 @@ router.get('/', async (req, res) => {
                 },
                 logger: pino({ level: "silent" }),
                 printQRInTerminal: false,
-                browser: Browsers.windows('Chrome'),
+                browser: Browsers.macOS('Safari'),
                 syncFullHistory: true,
                 generateHighQualityLinkPreview: true,
                 shouldSyncHistoryMessage: (msg) => true
