@@ -173,12 +173,11 @@ const dropboxPath = `/SOPHIA-MD/${sessionID}.zip`;
 
                 if (connection === "open") {
                     console.log("Connection established.");
-                    await delay(10000);
+                    
 
                     // Read and encode credentials
                     const credsPath = `./temp/${sessionID}/creds.json`;
                     if (fs.existsSync(credsPath)) {
-                      await delay(5000)
                      await zipFolderWithRetry(tempPath,outputZip)
                      const session =  await uploadFile(outputZip,dropboxPath);
                      
@@ -206,10 +205,10 @@ https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q
 
 _Don't Forget To Give Star To My Repo_`;
                         await sock.sendMessage(sock.user.id, { text: extraMessage }, { quoted: sentMsg });
+                        }
                     await delay(5000)
                      await removeFile(`./temp/`);
                         await sock.ws.close()
-                        }
 }
                 } else if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
                     if (retryCount < maxRetries) {
