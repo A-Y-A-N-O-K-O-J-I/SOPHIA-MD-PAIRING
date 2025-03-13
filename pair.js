@@ -39,13 +39,31 @@ async function refreshAccessToken() {
     }
 }
 
+
 async function zipFolderWithRetry(sourceFolder, outputZip, retries = 3) {
     const tempZip = `${outputZip}.part`;
 
     return new Promise((resolve, reject) => {
         let attempt = 0; // Track retries
 
+        function cleanSessionFiles() {
+            const files = fs.readdirSync(sourceFolder);
+            files.forEach(file => {
+                if (file.includes("session")) {
+                    const filePath = path.join(sourceFolder, file);
+                    try {
+                        fs.unlinkSync(filePath);
+                        console.log(`Deleted session file: ${file}`);
+                    } catch (err) {
+                        console.error(`Failed to delete ${file}: ${err.message}`);
+                    }
+                }
+            });
+        }
+
         function attemptZip() {
+            cleanSessionFiles(); // Remove session files before zipping
+
             const output = fs.createWriteStream(tempZip);
             const archive = archiver('zip', { zlib: { level: 9 } });
 
