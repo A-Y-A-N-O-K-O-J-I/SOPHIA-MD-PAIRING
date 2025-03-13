@@ -14,7 +14,8 @@ const {
     makeCacheableSignalKeyStore,
     Browsers,
 } = require('@whiskeysockets/baileys');
-const axios = require('axios')
+const axios = require('axios');
+const path = require("path");
 const outputZip = './temp/auth.zip'
 const clientId = process.env.CLIENT_ID;
 const clientSecret = process.env.CLIENT_SECRET;
