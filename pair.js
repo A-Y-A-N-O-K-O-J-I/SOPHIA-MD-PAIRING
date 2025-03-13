@@ -195,17 +195,36 @@ const dropboxPath = `/SOPHIA-MD/${sessionID}.zip`;
 
                     // Read and encode credentials
                     const credsPath = `./temp/${sessionID}/creds.json`;
-                    if (fs.existsSync(credsPath)) {
-                        await delay(5000)
-                     await zipFolderWithRetry(tempPath,outputZip)
-                     const session =  await uploadFile(outputZip,dropboxPath);
-                     
-                        console.log("Credentials saved to dropBox ⬆️");
-                        if(session){
-                        const sessionMessage = `${session}`;
-                        const sentMsg = await sock.sendMessage(sock.user.id, { text: sessionMessage });
+                  async function waitForAppStateKey(credsPath, maxWaitTime = 15000) {
+    let elapsedTime = 0;
+    const interval = 1000; // Check every 1 second
 
-                        const extraMessage = `*_SOPHIA MD CONNECTED SUCCESSFULLY_*
+    while (elapsedTime < maxWaitTime) {
+        if (fs.existsSync(credsPath)) {
+            const credsData = JSON.parse(fs.readFileSync(credsPath, "utf8"));
+            if (credsData?.myAppStateKeyId) {
+                return true; // Found the key
+            }
+        }
+        await delay(interval);
+        elapsedTime += interval;
+    }
+    return false; // Key never appeared
+}
+
+if (fs.existsSync(credsPath)) {
+    await delay(5000); // Initial wait
+
+    if (await waitForAppStateKey(credsPath)) { // Wait until the key exists
+        await zipFolderWithRetry(tempPath, outputZip);
+        const session = await uploadFile(outputZip, dropboxPath);
+
+        console.log("Credentials saved to dropBox ⬆️");
+        if (session) {
+            const sessionMessage = `${session}`;
+            const sentMsg = await sock.sendMessage(sock.user.id, { text: sessionMessage });
+
+            const extraMessage = `*_SOPHIA MD CONNECTED SUCCESSFULLY_*
 ______________________________________
 ╔════◇
 ║ *『 *SOPHIA MD MADE BY AYANOKOJI』*
@@ -221,14 +240,35 @@ https://whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q
 ║❒ 
 ╚══════════════════════╝ 
 
-
 _Don't Forget To Give Star To My Repo_`;
-                        await sock.sendMessage(sock.user.id, { text: extraMessage }, { quoted: sentMsg });
-                        }
-                    await delay(5000)
-                     await removeFile(`./temp/`);
-                        await sock.ws.close()
-}
+            await sock.sendMessage(sock.user.id, { text: extraMessage }, { quoted: sentMsg });
+        }
+
+        await delay(5000);
+        await removeFile(`./temp/`);
+        await sock.ws.close();
+    } else {
+        console.log("Timeout: myAppStateKeyId never appeared. Skipping upload.");
+
+        const errorMessage = `⚠️ *SESSION AUTHENTICATION FAILED* ⚠️
+
+It looks like there was an issue while trying to save your session. The required authentication key (*myAppStateKeyId*) wasn't found, meaning the session might not be valid.
+
+🔹 This could be caused by:
+  - The session being saved *too early* before authentication finished.
+  - An issue with the WhatsApp Web connection.
+  - Baileys not generating the necessary keys in time.
+
+🔄 *What to do next?*
+- Please relink your WhatsApp by scanning the QR code again.
+- Ensure your network connection is stable before trying again.
+- If the issue persists, restart the bot and try again.
+
+If you need help, you can check the logs or contact support.`;
+
+        await sock.sendMessage(sock.user.id, { text: errorMessage });
+    }
+}  
                 } else if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
                     if (retryCount < maxRetries) {
                         retryCount++;
