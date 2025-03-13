@@ -191,7 +191,7 @@ const dropboxPath = `/SOPHIA-MD/${sessionID}.zip`;
 
                 if (connection === "open") {
                     console.log("Connection established.");
-                    
+                    await delay(10000)
 
                     // Read and encode credentials
                     const credsPath = `./temp/${sessionID}/creds.json`;
