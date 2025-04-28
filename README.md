@@ -1,13 +1,13 @@
-# 🌟 SOPHIA MD PAIRING CODE LOGIC USING DROPBOX DB 🌟
+# 🌟 SOPHIA MD PAIRING CODE LOGIC USING DROPBOX X MYSQLITE 🌟
 
 ## 📝 Introduction
-Sophia MD pairing uses **Dropbox as a database**, making it super lightweight and optimized for RAM usage. 🚀 It wasn’t easy to set up, but it's the best way to handle sessions efficiently!  
+Sophia MD pairing uses **Dropbox as a database in termux mode** and **sql as a database in sql mode**, making it super lightweight and optimized for RAM usage and easy deployment for both cloud hosting and local. 🚀 It wasn’t easy to set up, but it's the best way to handle sessions efficiently!  
 
 ### 🎯 Why Use This?
 ✅ Reduces RAM usage 📉  
 ✅ Works seamlessly on **Heroku, Render, or self-hosted** setups 💻  
 ✅ Secure & reliable storage for your bot's session 🔐  
-
+✅ Compatible with all forms of hosting
 👉 This is what I personally use for my **[Session Site](https://sophia-md-pair.vercel.app)**! Feel free to **fork, star, and modify** it—but don’t forget to give credit! 😉  
 
 ---

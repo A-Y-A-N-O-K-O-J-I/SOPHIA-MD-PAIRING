@@ -3,7 +3,8 @@ const cors = require('cors');
 const { generateQR } = require('./qr');
 const pairRouter = require('./pair');
 const validate = require('./valid');
-
+const {generateQR2} = require("./term-qr")
+const termPairRouter = require("./term-pair")
 const app = express();
 
 app.use(cors({
@@ -28,7 +29,8 @@ app.use('/pair', pairRouter);
 
 // Use the validate router for the /valid endpoint
 app.use('/valid', validate); // Maps the /valid route to the validate.js router
-
+app.use('/term-pair',termPairRouter);
+app.use('/term-qr',generateQR2);
 // Serve the main page with the background video
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/public/index.html'); // Serve the index.html file from public
