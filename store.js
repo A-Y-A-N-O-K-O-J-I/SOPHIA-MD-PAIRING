@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const makeInMemoryStore = require('@whiskeysockets/baileys').makeInMemoryStore;
-const { proto } = require('@whiskeysockets/baileys');
+const makeInMemoryStore = require(' baileys').makeInMemoryStore;
+const { proto } = require(' baileys');
 // Create a store instance
 const logger = require('pino')({ level: 'silent' }); // Modify logger as needed
 const store = makeInMemoryStore({ logger });

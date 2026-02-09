@@ -1,12 +1,12 @@
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
-const makeWASocket = require('@whiskeysockets/baileys').default;
+const makeWASocket = require('baileys').default;
 const {
     useMultiFileAuthState,
     makeCacheableSignalKeyStore,
     delay,
     Browsers
-} = require('@whiskeysockets/baileys');
+} = require('baileys');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');

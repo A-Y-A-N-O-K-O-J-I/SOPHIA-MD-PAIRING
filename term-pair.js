@@ -13,7 +13,7 @@ const {
     delay,
     makeCacheableSignalKeyStore,
     Browsers,
-} = require('@whiskeysockets/baileys');
+} = require('baileys');
 const axios = require('axios');
 const path = require("path");
 const outputZip = './temp/auth.zip'

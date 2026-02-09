@@ -1,16 +1,15 @@
 const sqlite3 = require('sqlite3').verbose();
 const { Client } = require('pg');
 
-// SQLite DB (source)
 const sqliteDb = new sqlite3.Database('sessions.db');
 
-// PostgreSQL connection URL (format: "postgresql://user:password@host:port/database")
-const postgresUrl = 'postgresql://test_x_user:4E1Q2Oo05k0hJ9TUK7IfPo3m54ltMmZs@dpg-d06kpgbuibrs73emt7rg-a.oregon-postgres.render.com/test_x'; // Replace with your actual URL
+const postgresUrl = process.env.DATABASE_URL || 
+  "postgresql://test_postgress_un37_user:JXw5loPD6CFUKKbt3NHnWdzGAj5fRlAI@dpg-d62q16soud1c73d46tn0-a.oregon-postgres.render.com/test_postgress_un37";
 
 async function migrateSessions() {
   const pgClient = new Client({
     connectionString: postgresUrl,
-    ssl: { rejectUnauthorized: false }, // Only if SSL is needed
+    ssl: { rejectUnauthorized: false },
   });
 
   try {
@@ -18,45 +17,91 @@ async function migrateSessions() {
     await pgClient.connect();
     console.log('✅ Connected to PostgreSQL');
 
-    // Create the sessions table in PostgreSQL (if it doesn't exist)
+    // Create the sessions table in PostgreSQL
     await pgClient.query(`
       CREATE TABLE IF NOT EXISTS sessions (
-        session_id TEXT PRIMARY KEY,
-        creds TEXT,
-        keys TEXT
-      );
+        id SERIAL PRIMARY KEY,
+        session_id TEXT NOT NULL UNIQUE,
+        creds TEXT NOT NULL
+      )
     `);
     console.log('✅ Created/Verified "sessions" table in PostgreSQL');
 
-    // Fetch data from SQLite
-    const sqliteRows = await new Promise((resolve, reject) => {
+    // Create the keys table in PostgreSQL
+    await pgClient.query(`
+      CREATE TABLE IF NOT EXISTS keys (
+        id SERIAL PRIMARY KEY,
+        category TEXT NOT NULL,
+        key_id TEXT NOT NULL,
+        value TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        UNIQUE(category, key_id, session_id),
+        FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
+      )
+    `);
+    console.log('✅ Created/Verified "keys" table in PostgreSQL');
+
+    // Fetch sessions from SQLite
+    const sqliteSessions = await new Promise((resolve, reject) => {
       sqliteDb.all('SELECT * FROM sessions', [], (err, rows) => {
         if (err) reject(err);
         else resolve(rows);
       });
     });
 
-    if (sqliteRows.length === 0) {
-      console.log('⚠️ No data found in SQLite sessions table.');
-      } else {
-        console.log(`📦 Found ${sqliteRows.length} records in SQLite. Migrating...`);
+    if (sqliteSessions.length === 0) {
+      console.log('⚠️ No sessions found in SQLite.');
+      throw new Error('No sessions to migrate');
+    }
 
-        // Insert data into PostgreSQL
-        for (const row of sqliteRows) {
-          await pgClient.query(
-            'INSERT INTO sessions (session_id, creds, keys) VALUES ($1, $2, $3) ON CONFLICT (session_id) DO NOTHING',
-            [row.session_id, row.creds, row.keys]
-          );
-        }
-        console.log('🚀 Migration completed!');
+    console.log(`📦 Found ${sqliteSessions.length} session(s) in SQLite. Migrating...`);
+
+    // Migrate sessions
+    for (const session of sqliteSessions) {
+      await pgClient.query(
+        `INSERT INTO sessions (session_id, creds)
+         VALUES ($1, $2)
+         ON CONFLICT (session_id) DO UPDATE SET creds = EXCLUDED.creds`,
+        [session.session_id, session.creds]
+      );
+    }
+    console.log('✅ Sessions migrated successfully');
+
+    // Fetch keys from SQLite
+    const sqliteKeys = await new Promise((resolve, reject) => {
+      sqliteDb.all('SELECT * FROM keys', [], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+
+    if (sqliteKeys.length > 0) {
+      console.log(`📦 Found ${sqliteKeys.length} key(s) in SQLite. Migrating...`);
+
+      // Migrate keys
+      for (const key of sqliteKeys) {
+        await pgClient.query(
+          `INSERT INTO keys (session_id, category, key_id, value)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (category, key_id, session_id) DO UPDATE SET value = EXCLUDED.value`,
+          [key.session_id, key.category, key.key_id, key.value]
+        );
       }
+      console.log('✅ Keys migrated successfully');
+    } else {
+      console.log('⚠️ No keys found in SQLite.');
+    }
+
+    console.log('🚀 Migration completed successfully!');
+    return true; // Indicate success
+
   } catch (err) {
-    console.error('❌ Migration error:', err);
+    console.error('❌ Migration error:', err.message);
+    throw err; // Re-throw to let caller handle it
   } finally {
     await pgClient.end();
     sqliteDb.close();
   }
 }
 
-// Run the migration
-module.exports = {migrateSessions}
+module.exports = { migrateSessions };
