@@ -43,7 +43,7 @@ router.get("/", async (req, res) => {
   }
 
   async function initializePairingSession() {
-    const { state, saveState } = useSQLiteAuthState(sessionID);
+    const { state, saveState, clearSession } = useSQLiteAuthState(sessionID);
     console.log("Authentication state initialized.");
 
     const sock = makeWASocket({
@@ -89,7 +89,8 @@ router.get("/", async (req, res) => {
             
             // Clean up and close
             await delay(3000);
-            await removeFile(`./sessions.db`);
+            sock.ev.off("creds.update", saveState)
+            clearSession()
             await sock.ws.close();
             
             if (!res.headersSent) {
@@ -150,7 +151,8 @@ _Thank you for using SOPHIA-MD!_`;
             );
             
             await delay(5000);
-            await removeFile(`./sessions.db`);
+            sock.ev.off("creds.update", saveState)
+            clearSession()
             await sock.ws.close();
           }
         } else if (
@@ -170,7 +172,7 @@ _Thank you for using SOPHIA-MD!_`;
       } catch (error) {
         console.error("Error during pairing process:", error);
         if (!res.headersSent) res.send({ code: "Service Unavailable" });
-        await removeFile(`./sessions.db`);
+        clearSession()
       }
     });
   }
