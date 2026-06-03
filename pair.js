@@ -1,124 +1,101 @@
-const { v4: uuidv4 } = require("uuid");
-const fs = require("fs");
-const fsPromises = require("fs").promises;
-const pino = require("pino");
-require("dotenv").config();
 const express = require("express");
+const crypto = require("crypto");
+const { Boom } = require("@hapi/boom");
 const router = express.Router();
-const { useSQLiteAuthState } = require("./auth");
-const { migrateSessions } = require("./migrate");
-const {
-  default: makeWASocket,
-  delay,
-  Browsers,
-} = require("baileys");
-
-const credsPath = "./sessions.db";
-
-async function removeFile(filePath) {
-  if (fs.existsSync(filePath)) {
-    try {
-      await fsPromises.rm(filePath, { recursive: true, force: true });
-      console.log(`Successfully removed file: ${filePath}`);
-    } catch (error) {
-      console.error(`Error removing file: ${filePath}`, error);
-    }
-  }
-}
+const { useSQLiteAuthState, getAllKeysForSession, clearSession } = require("./auth");
+const { delay, DisconnectReason } = require("baileys");
+const { createSocket } = require("./connectionLogic");
+const { saveToVault } = require("./vault");
+const config = require("./config");
 
 router.get("/", async (req, res) => {
-  console.log("Generating pairing code...");
-  const extraRandom = Math.random().toString(36).substring(2, 22).toUpperCase();
-  const sessionID = `SOPHIA_MD-${uuidv4().replace(/-/g, "").toUpperCase()}${extraRandom}`;
-  console.log(`Generated session ID: ${sessionID}`);
-
   let num = req.query.number;
-  let retryCount = 0;
-  const maxRetries = 1;
-  
   if (!num) {
+    console.log("Database url:", process.env)
     return res.status(400).json({
-      message: "Number query required",
+      message: "Number query parameter required",
+      example: "/pair?number=1234567890",
     });
   }
+  num = num.replace(/[^0-9]/g, "");
 
-  async function initializePairingSession() {
-    const { state, saveState, clearSession } = useSQLiteAuthState(sessionID);
-    console.log("Authentication state initialized.");
+  // Unique session ID per pairing attempt
+  const sessionId = `SOPHIA_MD-${crypto.randomBytes(16).toString("hex").toUpperCase()}`;
 
-    const sock = makeWASocket({
-      auth: state,
-      logger: pino({ level: "silent" }),
-      printQRInTerminal: false,
-      browser: Browsers.macOS("Safari"),
-      version: [2, 3000, 1028442591],
-      syncFullHistory: true,
-      generateHighQualityLinkPreview: true,
-    });
+  let pairingCodeGenerated = false;
+  let sessionSaved = false;
 
-    if (!sock.authState.creds.registered) {
-      console.log("Requesting pairing code...");
-      await delay(1500);
-      num = num.replace(/[^0-9]/g, "");
-      const code = await sock.requestPairingCode(num);
-      if (!res.headersSent) res.send({ code });
-    }
+  async function run() {
+    // Clear any stale data before starting
+    clearSession(sessionId);
+    const { state, saveState } = useSQLiteAuthState(sessionId);
 
-    sock.ev.on("creds.update", saveState);
+    async function connect() {
+      const sock = await createSocket(state);
+      sock.ev.on("creds.update", saveState);
 
-    sock.ev.on("connection.update", async (update) => {
-      const { connection, lastDisconnect } = update;
-      
-      try {
-        if (connection === "open") {
-          console.log("Connection established.");
-          await delay(10000);
-          
-          // Migration with proper error handling
-          try {
-            await migrateSessions();
-            console.log("✅ Session migrated to PostgreSQL successfully");
-          } catch (migrationError) {
-            console.error("❌ CRITICAL: Migration failed!", migrationError.message);
-            
-            // Send error to user
-            const userJid = sock.user.lid.split(":")[0] + "@lid";
-            await sock.sendMessage(userJid, {
-              text: `❌ *MIGRATION FAILED*\n\nYour session could not be saved to the vault.\n\nError: ${migrationError.message}\n\nPlease contact support or try again.`
-            });
-            
-            // Clean up and close
-            await delay(3000);
-            sock.ev.off("creds.update", saveState)
-            clearSession()
-            await sock.ws.close();
-            
-            if (!res.headersSent) {
-              res.status(500).json({ 
-                error: "Migration failed", 
-                message: migrationError.message 
-              });
+      sock.ev.on("connection.update", async (update) => {
+        const { connection, lastDisconnect } = update;
+        console.log(`🔄 [${sessionId.slice(-8)}] ${connection}`);
+
+        try {
+          // qr fires when the WS is open and Baileys is ready for auth — the
+          // correct window to call requestPairingCode instead of scanning a QR.
+          if (update.qr && !sock.authState.creds.registered && !pairingCodeGenerated) {
+            pairingCodeGenerated = true;
+            console.log("📱 Requesting pairing code...");
+            try {
+              const code = await sock.requestPairingCode(num);
+              console.log(`✅ Code generated: ${code}`);
+              if (!res.headersSent) {
+                res.json({
+                  code,
+                  sessionId,
+                  message: "Enter this code in WhatsApp. Your session ID will be sent to your number after pairing.",
+                  phoneNumber: num,
+                });
+              }
+            } catch (err) {
+              console.error("❌ Error generating pairing code:", err);
+              if (!res.headersSent) {
+                res.status(500).json({
+                  error: "Failed to generate pairing code",
+                  message: "Please try again.",
+                  details: err.message,
+                });
+              }
+              sock.ev.removeAllListeners();
+              clearSession(sessionId);
             }
-            return; // Stop execution
           }
-          
-          if (fs.existsSync(credsPath)) {
-            await delay(5000);
-            console.log("Credentials saved to PostgreSQL");
-            const userJid = sock.user.lid.split(":")[0] + "@lid";
-            
-            // Send session ID
-            const sentMsg = await sock.sendMessage(userJid, {
-              text: sessionID,
-            });
 
-            // Properly formatted WhatsApp message
-            const extraMessage = `*╭━━━━━━━━━━━━━━━━━━━╮*
+          if (connection === "open" && !sessionSaved) {
+            sessionSaved = true;
+            console.log(`✅ [${sessionId.slice(-8)}] Paired! Saving to vault...`);
+
+            try {
+              if (config.VAULT_DATABASE_URL) {
+                const keyRows = getAllKeysForSession(sessionId);
+                await saveToVault(config.VAULT_DATABASE_URL, sessionId, num, sock.authState.creds, keyRows);
+                console.log("✅ Session saved to vault");
+              }
+
+              await delay(3000);
+              const userJid = `${num}@s.whatsapp.net`;
+
+              // Send session ID first
+              const sentMsg = await sock.sendMessage(userJid, {
+                text: sessionId,
+              });
+
+              // Then send the formatted info message
+              await sock.sendMessage(userJid, {
+                text: `*╭━━━━━━━━━━━━━━━━━━━╮*
 *│  SOPHIA-MD CONNECTED  │*
 *╰━━━━━━━━━━━━━━━━━━━╯*
 
 ✅ *Status:* Connected Successfully
-⚡ *Version:* v2.0.0 (Stable)
+⚡ *Version:* v4.0.0 (Stable)
 👑 *Maintainer:* AYANOKOJI KIYOTAKA
 🌐 *Platform:* WhatsApp Multi-Device
 ⏱️ *Time:* ${new Date().toLocaleString()}
@@ -142,46 +119,57 @@ router.get("/", async (req, res) => {
 
 *━━━━━━━━━━━━━━━━━━━*
 
-_Thank you for using SOPHIA-MD!_`;
+_Thank you for using SOPHIA-MD!_`,
+              }, { quoted: sentMsg });
+              console.log(`✅ Session ID sent to ${num}`);
+            } catch (err) {
+              console.error("❌ Error saving/sending session:", err);
+            } finally {
+              await delay(2000);
+              sock.ev.removeAllListeners();
+              try { sock.ws.close(); } catch (_) {}
+              console.log(`✅ [${sessionId.slice(-8)}] Done, socket closed.`);
+            }
+          }
 
-            await sock.sendMessage(
-              userJid,
-              { text: extraMessage },
-              { quoted: sentMsg }
-            );
-            
-            await delay(5000);
-            sock.ev.off("creds.update", saveState)
-            clearSession()
-            await sock.ws.close();
+          if (connection === "close" && !sessionSaved) {
+            const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
+            console.log(`❌ [${sessionId.slice(-8)}] Closed (reason: ${reason})`);
+
+            if (reason === DisconnectReason.restartRequired) {
+              console.log(`🔄 [${sessionId.slice(-8)}] Restart required, reconnecting...`);
+              connect();
+              return;
+            }
+
+            if (!res.headersSent) {
+              res.status(500).json({
+                error: "Connection lost",
+                message: "Pairing failed. Please try again.",
+              });
+            }
+            clearSession(sessionId);
           }
-        } else if (
-          connection === "close" &&
-          lastDisconnect?.error?.output?.statusCode !== 401
-        ) {
-          if (retryCount < maxRetries) {
-            retryCount++;
-            console.log(`Retrying connection (${retryCount}/${maxRetries})...`);
-            await delay(10000);
-            await initializePairingSession();
-          } else {
-            console.error("Max retries reached. Aborting.");
-            if (!res.headersSent) res.send({ code: "Service Unavailable" });
+        } catch (err) {
+          console.error("❌ Pairing error:", err);
+          if (!res.headersSent) {
+            res.status(500).json({ error: "Service error", message: "Please try again." });
           }
+          clearSession(sessionId);
         }
-      } catch (error) {
-        console.error("Error during pairing process:", error);
-        if (!res.headersSent) res.send({ code: "Service Unavailable" });
-        clearSession()
-      }
-    });
+      });
+    }
+
+    await connect();
   }
 
   try {
-    await initializePairingSession();
-  } catch (error) {
-    console.error("Initialization error:", error);
-    if (!res.headersSent) res.send({ code: "Initialization failed" });
+    await run();
+  } catch (err) {
+    console.error("❌ Initialization error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Initialization failed", message: "Please try again." });
+    }
   }
 });
 

@@ -116,19 +116,18 @@ function writeKeys(data, sessionId) {
 
 function clearSession(sessionId) {
   try {
-    const deleteSession = getDB().transaction(() => {
-      // Delete keys first (foreign key constraint)
-      getDB().prepare('DELETE FROM keys WHERE session_id = ?').run(sessionId);
-      
-      // Then delete session
-      getDB().prepare('DELETE FROM sessions WHERE session_id = ?').run(sessionId);
-    });
-    
-    deleteSession();
-    console.log(`✅ Cleared session data for: ${sessionId}`);
+    const db = getDB();
+    db.transaction(() => {
+      db.prepare('DELETE FROM keys WHERE session_id = ?').run(sessionId);
+      db.prepare('DELETE FROM sessions WHERE session_id = ?').run(sessionId);
+    })();
   } catch (error) {
     console.error("Error clearing session:", error);
   }
+}
+
+function getAllKeysForSession(sessionId) {
+  return getDB().prepare('SELECT category, key_id, value FROM keys WHERE session_id = ?').all(sessionId);
 }
 
 function useSQLiteAuthState(sessionId) {
@@ -163,4 +162,4 @@ function useSQLiteAuthState(sessionId) {
   };
 }
 
-module.exports = { useSQLiteAuthState };
+module.exports = { useSQLiteAuthState, clearSession, getAllKeysForSession };

@@ -1,153 +1,133 @@
 const QRCode = require("qrcode");
-const { v4: uuidv4 } = require("uuid");
-const makeWASocket = require("baileys").default;
-const { delay, Browsers } = require("baileys");
-const path = require("path");
-const fs = require("fs");
-const axios = require("axios");
-const pino = require("pino");
-const { useSQLiteAuthState } = require("./auth");
-const { migrateSessions } = require("./migrate");
+const crypto = require("crypto");
+const { delay, DisconnectReason } = require("baileys");
+const { useSQLiteAuthState, getAllKeysForSession, clearSession } = require("./auth");
 const { Boom } = require("@hapi/boom");
-async function removeFile(filePath) {
-  if (fs.existsSync(filePath)) {
-    try {
-      await fsPromises.rm(filePath, { recursive: true, force: true });
-      console.log(`Successfully removed file: ${filePath}`);
-    } catch (error) {
-      console.error(`Error removing file: ${filePath}`, error);
-    }
-  }
-}
+const { createSocket } = require("./connectionLogic");
+const { saveToVault } = require("./vault");
+const config = require("./config");
 
-async function generateQR(req, res) {
-  const extraRandom = Math.random().toString(36).substring(2, 12).toUpperCase();
-  const sessionID = `SOPHIA_MD-${uuidv4().replace(/-/g, "").toUpperCase()}${extraRandom}`;
+async function generateQR(_req, res) {
+  const sessionId = `SOPHIA_MD-${crypto.randomBytes(16).toString("hex").toUpperCase()}`;
 
   let responseSent = false;
+  let sessionSaved = false;
 
-  async function initializeQRSession() {
-    const { state, saveState } = useSQLiteAuthState(sessionID);
-    console.log("Authentication state initialized.");
-    try {
-      const sock = makeWASocket({
-        auth: state,
-        logger: pino({ level: "silent" }),
-        printQRInTerminal: false,
-        version: [2, 3000, 1028442591],
-        browser: Browsers.windows("Safari"),
-        syncFullHistory: true,
-        generateHighQualityLinkPreview: true,
-      });
+  async function run() {
+    clearSession(sessionId);
+    const { state, saveState } = useSQLiteAuthState(sessionId);
 
+    async function connect() {
+      const sock = await createSocket(state);
       sock.ev.on("creds.update", saveState);
 
       sock.ev.on("connection.update", async (update) => {
         const { connection, lastDisconnect, qr } = update;
 
-        // Send QR code if available
-        if (qr && !responseSent) {
-          try {
-            console.log(`Serving QR code for session: ${sessionID}`);
+        try {
+          if (qr && !responseSent) {
+            responseSent = true;
+            console.log(`📸 [${sessionId.slice(-8)}] Serving QR code`);
             const qrBuffer = await QRCode.toBuffer(qr);
             res.writeHead(200, { "Content-Type": "image/png" });
             res.end(qrBuffer);
-            responseSent = true; // Mark response as sent
-          } catch (error) {
-            console.error("Error sending QR code:", error);
           }
-        }
 
-        if (connection === "open") {
-          console.log("QR code scanned and session established.");
-          const credsPath = "./sessions.db";
-          if (fs.existsSync(credsPath)) {
-            await migrateSessions();
+          if (connection === "open" && !sessionSaved) {
+            sessionSaved = true;
+            console.log(`✅ [${sessionId.slice(-8)}] QR scanned! Saving to vault...`);
 
-            if (!responseSent) {
-              res
-                .status(500)
-                .json({
-                  error:
-                    "Unable to store session in the database, please try again.",
-                });
-              responseSent = true; // Mark response as sent
-            }
+            try {
+              if (config.VAULT_DATABASE_URL) {
+                const keyRows = getAllKeysForSession(sessionId);
+                await saveToVault(config.VAULT_DATABASE_URL, sessionId, null, sock.authState.creds, keyRows);
+                console.log("✅ Session saved to vault");
+              }
 
-            // Send session ID and additional messages
-            const sessionMessage = sessionID;
-            const userJid = sock.user.lid.split(":")[0] + "@lid";
-            const sentMsg = await sock.sendMessage(userJid, {
-              text: sessionMessage,
-            });
+              // Get the bot's own JID to send session ID back to the user
+              const num = sock.user.id.split(":")[0].split("@")[0];
+              const userJid = `${num}@s.whatsapp.net`;
 
-            const extraMessage = `
-                         ╔══════════════════════════════════╗
-                            『 *CONNECTED TO SOPHIA-MD SUCCESSFULLY* 』
-                         ╚══════════════════════════════════╝
-                         
-                         ✅ *Connection Status:* ESTABLISHED
-                         ⚡ *Bot Version:* v2.0.0 (Stable Build)
-                         👑 *Maintainer:* �𝐘𝚫𝚴𝚯𝐊𝚯𝐉𝚰 𝐊𝚰𝐄𝚯𝚻𝚫𝐊𝚫
-                         🌐 *Platform:* WhatsApp Multi-Device
-                         ⏱️ *Session:* ${new Date().toLocaleString()}
-                         
-                         ─────────────────────────────
-                         
-                         🛠️ *HOST THIS BOT YOURSELF:*
-                         • bot-hosting.net (Recommended)
-                         • Railway.app
-                         • Heroku
-                         • Koyeb.com
-                         • Replit.com
-                         • render.com
-                         📚 *Resources:*
-                         🌐 YouTube: youtube.com/@sophiaTechInc
-                         💻 GitHub: github.com/A-Y-A-N-O-K-O-J-I/SOPHIA-MD
-                         📢 Channel: whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q
-                         📦 Source Code: [Same as GitHub]
-                         
-                         ─────────────────────────────
-                         `;
-            await sock.sendMessage(
-              userJid,
-              { text: extraMessage },
-              { quoted: sentMsg },
-            );
+              await delay(3000);
 
-            // Clean up temporary session data
-            await delay(10000);
-            await sock.ws.close();
-            await removeFile(credsPath);
-          } else {
-            console.error("sessions.db not found!");
-            if (!responseSent) {
-              res
-                .status(500)
-                .json({
-                  error:
-                    "Session credentials not found, please try again later.",
-                });
-              responseSent = true; // Mark response as sent
+              const sentMsg = await sock.sendMessage(userJid, {
+                text: sessionId,
+              });
+
+              await sock.sendMessage(userJid, {
+                text: `*╭━━━━━━━━━━━━━━━━━━━╮*
+*│  SOPHIA-MD CONNECTED  │*
+*╰━━━━━━━━━━━━━━━━━━━╯*
+
+✅ *Status:* Connected Successfully
+⚡ *Version:* v2.0.0 (Stable)
+👑 *Maintainer:* AYANOKOJI KIYOTAKA
+🌐 *Platform:* WhatsApp Multi-Device
+⏱️ *Time:* ${new Date().toLocaleString()}
+
+*━━━━━━━━━━━━━━━━━━━*
+
+🛠️ *HOST THIS BOT YOURSELF:*
+• bot-hosting.net (Recommended)
+• Railway.app
+• Heroku
+• Koyeb.com
+• Replit.com
+• render.com
+
+*━━━━━━━━━━━━━━━━━━━*
+
+📚 *RESOURCES:*
+🌐 YouTube: youtube.com/@sophiaTechInc
+💻 GitHub: github.com/A-Y-A-N-O-K-O-J-I/SOPHIA-MD
+📢 Channel: whatsapp.com/channel/0029VasFQjXICVfoEId0lq0Q
+
+*━━━━━━━━━━━━━━━━━━━*
+
+_Thank you for using SOPHIA-MD!_`,
+              }, { quoted: sentMsg });
+
+              console.log(`✅ Session ID sent to ${num}`);
+            } catch (err) {
+              console.error("❌ Error saving/sending session:", err);
+            } finally {
+              await delay(2000);
+              sock.ev.removeAllListeners();
+              try { sock.ws.close(); } catch (_) {}
+              console.log(`✅ [${sessionId.slice(-8)}] Done, socket closed.`);
             }
           }
-        } else if (connection === "close") {
-          const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
-          console.log(reason);
-          console.log("Connection closed:", reason);
+
+          if (connection === "close" && !sessionSaved) {
+            const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
+            console.log(`❌ [${sessionId.slice(-8)}] Closed (reason: ${reason})`);
+
+            if (reason === DisconnectReason.restartRequired) {
+              console.log(`🔄 [${sessionId.slice(-8)}] Restart required, reconnecting...`);
+              connect();
+              return;
+            }
+
+            clearSession(sessionId);
+          }
+        } catch (err) {
+          console.error("❌ QR error:", err);
+          clearSession(sessionId);
         }
       });
-    } catch (error) {
-      console.error("Error initializing session:", error);
-      if (!responseSent) {
-        res.status(500).json({ error: "Service Unavailable" });
-        responseSent = true; // Mark response as sent
-      }
     }
+
+    await connect();
   }
 
-  // Start the QR session
-  await initializeQRSession();
+  try {
+    await run();
+  } catch (err) {
+    console.error("❌ QR initialization error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to generate QR code" });
+    }
+  }
 }
 
 module.exports = { generateQR };

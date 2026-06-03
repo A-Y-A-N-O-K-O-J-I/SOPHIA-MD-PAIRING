@@ -1,6 +1,6 @@
 {
   "name": "ayanokoji-bot",
-  "version": "1.3",
+  "version": "3.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -13,21 +13,37 @@
   "dependencies": {
     "@hapi/boom": "^10.0.1",
     "archiver": "^7.0.1",
+    "assemblyai": "^4.23.0",
     "axios": "^1.13.4",
     "baileys": "^7.0.0-rc.9",
     "base64-url": "^2.3.3",
     "better-sqlite3": "^12.6.2",
+    "cheerio": "^1.2.0",
     "cors": "^2.8.6",
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
+    "fluent-ffmpeg": "^2.1.3",
+    "form-data": "^4.0.5",
+    "js-beautify": "^1.15.4",
+    "jsdom": "^27.0.1",
     "libphonenumber-js": "^1.12.36",
+    "module-alias": "^2.3.4",
+    "moment": "^2.30.1",
+    "node-cache": "^5.1.2",
     "node-cron": "^4.2.1",
+    "node-webpmux": "^3.2.1",
     "pg": "^8.18.0",
     "pino": "^10.3.0",
     "qrcode": "^1.5.4",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
     "uuid": "^13.0.0"
+  },
+  "_moduleAliases": {
+    "react": "lib/react",
+    "store": "lib/store",
+    "command": "lib/Command",
+    "sophia": "lib/sophia"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"
