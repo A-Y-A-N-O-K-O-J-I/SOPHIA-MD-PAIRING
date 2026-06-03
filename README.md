@@ -336,4 +336,4 @@ After successful pairing, users are encouraged to follow:
 MIT
 
 ## Credits
-Maintained by AYANOKOJI KIETAKA (AYANOKOJI TECH)
+Maintained by AYANOKOJI KIYOTAKA (AYANOKOJI TECH)
